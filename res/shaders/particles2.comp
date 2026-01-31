@@ -1,0 +1,51 @@
+#version 450
+
+layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
+
+struct Particle
+{
+    vec4 position;
+    vec4 velocity;
+};
+
+layout(std140, binding = 0) readonly buffer ParticleSsboIn
+{
+    Particle particles_in[];
+};
+
+layout(std140, binding = 1) buffer ParticleSsboOut
+{
+    Particle particles_out[];
+};
+
+layout (binding = 2) uniform ParameterUbo
+{
+    float delta_time;
+} ubo;
+
+void main()
+{
+    uint index = gl_GlobalInvocationID.x;
+
+    Particle particle_in = particles_in[index];
+
+    vec3 velocity = particle_in.velocity.xyz;
+    vec3 position = particle_in.position.xyz + (velocity * ubo.delta_time);
+
+    if (abs(position.x) > 2.0F)
+    {
+        velocity.x = -velocity.x;
+    }
+    if (abs(position.y) > 2.0F)
+    {
+        velocity.y = -velocity.y;
+    }
+    if (abs(position.z) > 2.0F)
+    {
+        velocity.z = -velocity.z;
+    }
+    position = particle_in.position.xyz + (velocity * ubo.delta_time);
+
+    particles_out[index].velocity = vec4(velocity, particle_in.velocity.w);
+    particles_out[index].position = vec4(position, particle_in.position.w);
+}
