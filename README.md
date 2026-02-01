@@ -1,12 +1,6 @@
-# LTB CFD
+# LTB VLK
 
-Work in progress
-
-## Fluid Dynamics
-
-https://drzgan.github.io/Python_CFD/intro.html
-
-## Vulkan
+A C++ Vulkan Library. Work in progress.
 
 ### Useful References
 
