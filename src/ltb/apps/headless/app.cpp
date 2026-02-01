@@ -6,9 +6,7 @@
 namespace ltb
 {
 
-HeadlessApp::HeadlessApp( )
-{
-}
+HeadlessApp::HeadlessApp( ) = default;
 
 auto HeadlessApp::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
 {

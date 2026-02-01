@@ -100,7 +100,7 @@ target_link_libraries(
 target_include_directories(
   LtbVlk
   PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
   $<BUILD_INTERFACE:${LTB_VLK_GENERATED_DIR}>
 )
 target_compile_features(
