@@ -49,6 +49,7 @@ cpmaddpackage(
   "GLFW_BUILD_TESTS OFF"
   "GLFW_BUILD_EXAMPLES OFF"
   "GLFW_BUILD_DOCS OFF"
+  "GLFW_INSTALL OFF"
 )
 cpmaddpackage(
   NAME
