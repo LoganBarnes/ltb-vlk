@@ -10,6 +10,7 @@
 #include "ltb/gui/imgui_vulkan.hpp"
 #include "ltb/vlk/objs/fwd.hpp"
 #include "ltb/window/fwd.hpp"
+#include "ltb/vlk/vulkan.hpp"
 
 namespace ltb::gui
 {

@@ -15,11 +15,13 @@ struct CameraRenderParams
     glm::mat4 view_from_world = glm::identity< glm::mat4 >( );
     glm::mat4 clip_from_view  = glm::identity< glm::mat4 >( );
     glm::mat4 clip_from_world = glm::identity< glm::mat4 >( );
+    glm::mat4 world_from_clip = glm::identity< glm::mat4 >( );
 };
 
 struct SimpleCameraRenderParams
 {
     glm::mat4 clip_from_world = glm::identity< glm::mat4 >( );
+    glm::mat4 world_from_clip = glm::identity< glm::mat4 >( );
 };
 
 } // namespace ltb::cam

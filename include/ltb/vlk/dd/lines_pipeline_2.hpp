@@ -27,14 +27,14 @@ class LinesPipeline2
 public:
     LinesPipeline2( objs::VulkanGpu& gpu, objs::VulkanPresentation& presentation );
 
-    auto initialize( LinesPipeline2Settings settings ) -> utils::Result< void >;
+    auto initialize( LinesPipeline2Settings const& settings ) -> utils::Result< void >;
 
     [[nodiscard( "Const getter" )]]
     auto is_initialized( ) const -> bool;
 
     auto
     initialize_mesh( SimpleMesh2 const& mesh, CommandPool& command_pool, vk::Queue const& queue )
-        -> utils::Result< SimpleDisplayUniforms* >;
+        -> utils::Result< SimpleMeshUniforms* >;
 
     auto draw( objs::FrameInfo const& frame ) -> utils::Result< void >;
 
@@ -42,11 +42,13 @@ private:
     objs::VulkanGpu&          gpu_;
     objs::VulkanPresentation& presentation_;
 
+    objs::VulkanBuffer display_ubo_ = { gpu_ };
+
     objs::VulkanGraphicsPipeline pipeline_ = { gpu_, presentation_ };
 
     bool initialized_ = false;
 
-    using MeshAndUniforms = MeshData< SimpleDisplayUniforms >;
+    using MeshAndUniforms = MeshData< SimpleMeshUniforms >;
 
     std::list< MeshAndUniforms > mesh_data_ = { };
 

@@ -4,9 +4,9 @@
 #include "ltb/vlk/dd/lines_pipeline_2.hpp"
 
 // project
-#include "ltb/vlk/ltb_vlk_config.hpp"
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/device_memory_utils.hpp"
+#include "ltb/vlk/ltb_vlk_config.hpp"
 #include "ltb/vlk/objs/frame_info.hpp"
 
 // external
@@ -23,7 +23,7 @@ LinesPipeline2::LinesPipeline2( objs::VulkanGpu& gpu, objs::VulkanPresentation& 
 {
 }
 
-auto LinesPipeline2::initialize( LinesPipeline2Settings settings ) -> utils::Result< void >
+auto LinesPipeline2::initialize( LinesPipeline2Settings const& settings ) -> utils::Result< void >
 {
     if ( this->is_initialized( ) )
     {
@@ -53,8 +53,12 @@ auto LinesPipeline2::initialize( LinesPipeline2Settings settings ) -> utils::Res
 
     auto uniform_push_constants = std::vector{
         vk::PushConstantRange{ }
-            .setStageFlags( vk::ShaderStageFlagBits::eFragment )
+            .setStageFlags( vk::ShaderStageFlagBits::eVertex )
             .setOffset( 0U )
+            .setSize( sizeof( SimpleModelUniforms ) ),
+        vk::PushConstantRange{ }
+            .setStageFlags( vk::ShaderStageFlagBits::eFragment )
+            .setOffset( sizeof( SimpleModelUniforms ) )
             .setSize( sizeof( SimpleDisplayUniforms ) ),
     };
 
@@ -130,7 +134,7 @@ auto LinesPipeline2::initialize_mesh(
     SimpleMesh2 const& mesh,
     CommandPool&       command_pool,
     vk::Queue const&   queue
-) -> utils::Result< SimpleDisplayUniforms* >
+) -> utils::Result< SimpleMeshUniforms* >
 {
     LTB_CHECK_VALID( command_pool.is_initialized( ) );
     LTB_CHECK_VALID( !mesh.positions.empty( ) );
@@ -226,10 +230,17 @@ auto LinesPipeline2::draw_mesh( MeshAndUniforms const& mesh_data, objs::FrameInf
     constexpr auto model_offset = 0U;
     frame.command_buffer.pushConstants(
         pipeline_.pipeline_layout( ).get( ),
-        vk::ShaderStageFlagBits::eFragment,
+        vk::ShaderStageFlagBits::eVertex,
         model_offset,
-        sizeof( mesh_data.uniforms ),
-        &mesh_data.uniforms
+        sizeof( mesh_data.uniforms.model ),
+        &mesh_data.uniforms.model
+    );
+    frame.command_buffer.pushConstants(
+        pipeline_.pipeline_layout( ).get( ),
+        vk::ShaderStageFlagBits::eFragment,
+        sizeof( mesh_data.uniforms.model ),
+        sizeof( mesh_data.uniforms.display ),
+        &mesh_data.uniforms.display
     );
 
     constexpr auto first_binding  = 0U;

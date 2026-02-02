@@ -2,7 +2,7 @@
 
 layout(push_constant) uniform DisplayUniforms
 {
-    vec4 color;
+    layout(offset = 48) vec4 color;
 } display;
 
 layout(location = 0) out vec4 out_color;

@@ -7,7 +7,13 @@ layout(binding = 0) uniform CameraUniforms
     mat4 clip_from_world;
 } camera;
 
+layout(push_constant) uniform ModelUniforms
+{
+    mat3 world_from_local;
+} model;
+
 void main()
 {
-    gl_Position = camera.clip_from_world * vec4(in_position, 0.0F, 1.0F);
+    vec3 world_position = model.world_from_local * vec3(in_position, 1.0F);
+    gl_Position         = camera.clip_from_world * vec4(world_position, 1.0F);
 }

@@ -64,9 +64,9 @@ auto Camera2d::handle_inputs( ) -> bool
         camera_changed = true;
     }
 
-    if ( ImGui::IsMouseDragging( ImGuiMouseButton_Left ) && io.KeyShift )
+    if ( ImGui::IsMouseDragging( ImGuiMouseButton_Right ) )
     {
-        auto const mouse_delta = glm::vec2{ ImGui::GetMouseDragDelta( ImGuiMouseButton_Left ) };
+        auto const mouse_delta = glm::vec2{ ImGui::GetMouseDragDelta( ImGuiMouseButton_Right ) };
         auto const framebuffer_scale  = glm::vec2{ io.DisplayFramebufferScale };
         auto const scaled_mouse_delta = mouse_delta * framebuffer_scale;
 
@@ -105,6 +105,7 @@ auto Camera2d::simple_render_params( ) const -> SimpleCameraRenderParams
 {
     return SimpleCameraRenderParams{
         .clip_from_world = render_params_.clip_from_world,
+        .world_from_clip = render_params_.world_from_clip,
     };
 }
 
@@ -129,13 +130,14 @@ auto Camera2d::update_render_params( ) -> void
     render_params_.clip_from_view = glm::ortho(
         +half_view_size.x,
         -half_view_size.x,
-        -half_view_size.y,
         +half_view_size.y,
+        -half_view_size.y,
         cam_distance - 1.0F,
         cam_distance + 1.0F
     );
 
     render_params_.clip_from_world = render_params_.clip_from_view * render_params_.view_from_world;
+    render_params_.world_from_clip = glm::inverse( render_params_.clip_from_world );
 }
 
 } // namespace ltb::cam
