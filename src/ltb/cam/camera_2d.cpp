@@ -68,7 +68,7 @@ auto Camera2d::handle_inputs( ) -> bool
     {
         auto const mouse_delta = glm::vec2{ ImGui::GetMouseDragDelta( ImGuiMouseButton_Right ) };
         auto const framebuffer_scale  = glm::vec2{ io.DisplayFramebufferScale };
-        auto const scaled_mouse_delta = mouse_delta * framebuffer_scale;
+        auto const scaled_mouse_delta = mouse_delta * framebuffer_scale * glm::vec2( 1.0F, -1.0F );
 
         auto const clip_delta     = ( scaled_mouse_delta / viewport_size_ ) * 2.0F;
         auto const half_view_size = compute_half_view_size( viewport_size_, world_width_ );
