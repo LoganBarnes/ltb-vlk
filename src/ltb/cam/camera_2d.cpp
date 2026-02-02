@@ -5,6 +5,7 @@
 
 // project
 #include "ltb/gui/imgui.hpp"
+#include "ltb/utils/comparison_utils.hpp"
 
 // standard
 #include <algorithm>
@@ -14,6 +15,7 @@ namespace ltb::cam
 namespace
 {
 
+[[nodiscard( "Const computation" )]]
 auto compute_half_view_size( glm::vec2 const& viewport_size, float32 const width ) -> glm::vec2
 {
     auto const aspect_ratio     = viewport_size.x / viewport_size.y;
@@ -46,7 +48,7 @@ auto Camera2d::handle_inputs( ) -> bool
 
     auto const& io = ImGui::GetIO( );
 
-    if ( io.MouseWheel != 0.0F )
+    if ( !utils::exactly_equal( io.MouseWheel, 0.0F ) )
     {
         auto const framebuffer_scale = glm::vec2{ io.DisplayFramebufferScale };
         auto const mouse_pos         = glm::vec2{ io.MousePos } * framebuffer_scale;
@@ -110,7 +112,7 @@ auto Camera2d::to_world_pos( glm::vec2 const mouse_pos ) const -> glm::vec2
 {
     auto const clip_pos       = ( ( mouse_pos / viewport_size_ ) * 2.0F ) - 1.0F;
     auto const half_view_size = compute_half_view_size( viewport_size_, world_width_ );
-    return world_center_ + clip_pos * half_view_size;
+    return world_center_ + ( clip_pos * half_view_size );
 }
 
 auto Camera2d::update_render_params( ) -> void
