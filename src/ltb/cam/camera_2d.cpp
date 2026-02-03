@@ -10,6 +10,8 @@
 // standard
 #include <algorithm>
 
+#define Y_UP
+
 namespace ltb::cam
 {
 namespace
@@ -67,8 +69,12 @@ auto Camera2d::handle_inputs( ) -> bool
     if ( ImGui::IsMouseDragging( ImGuiMouseButton_Right ) )
     {
         auto const mouse_delta = glm::vec2{ ImGui::GetMouseDragDelta( ImGuiMouseButton_Right ) };
-        auto const framebuffer_scale  = glm::vec2{ io.DisplayFramebufferScale };
+        auto const framebuffer_scale = glm::vec2{ io.DisplayFramebufferScale };
+#if defined( Y_UP )
         auto const scaled_mouse_delta = mouse_delta * framebuffer_scale * glm::vec2( 1.0F, -1.0F );
+#else
+        auto const scaled_mouse_delta = mouse_delta * framebuffer_scale;
+#endif
 
         auto const clip_delta     = ( scaled_mouse_delta / viewport_size_ ) * 2.0F;
         auto const half_view_size = compute_half_view_size( viewport_size_, world_width_ );
@@ -113,7 +119,11 @@ auto Camera2d::to_world_pos( glm::vec2 const mouse_pos ) const -> glm::vec2
 {
     auto const clip_pos       = ( ( mouse_pos / viewport_size_ ) * 2.0F ) - 1.0F;
     auto const half_view_size = compute_half_view_size( viewport_size_, world_width_ );
+#if defined( Y_UP )
+    return world_center_ + ( glm::vec2( clip_pos.x, -clip_pos.y ) * half_view_size );
+#else
     return world_center_ + ( clip_pos * half_view_size );
+#endif
 }
 
 auto Camera2d::update_render_params( ) -> void
@@ -130,8 +140,13 @@ auto Camera2d::update_render_params( ) -> void
     render_params_.clip_from_view = glm::ortho(
         +half_view_size.x,
         -half_view_size.x,
+#if defined( Y_UP )
         +half_view_size.y,
         -half_view_size.y,
+#else
+        -half_view_size.y,
+        +half_view_size.y,
+#endif
         cam_distance - 1.0F,
         cam_distance + 1.0F
     );
