@@ -46,9 +46,14 @@ auto Camera2d::set_width( float32 const width ) -> void
 
 auto Camera2d::handle_inputs( ) -> bool
 {
-    auto camera_changed = false;
-
     auto const& io = ImGui::GetIO( );
+
+    if ( io.WantCaptureMouse )
+    {
+        return false;
+    }
+
+    auto camera_changed = false;
 
     if ( !utils::exactly_equal( io.MouseWheel, 0.0F ) )
     {
