@@ -84,8 +84,8 @@ public:
 
     [[nodiscard( "Const getter" )]] auto frame_index( ) const -> uint32;
     [[nodiscard( "Const getter" )]] auto previous_frame( ) const -> uint32;
-    [[nodiscard( "Const getter" )]] auto compute_previous_frame( uint index ) const -> uint32;
-    [[nodiscard( "Const getter" )]] auto compute_next_frame( uint index ) const -> uint32;
+    [[nodiscard( "Const getter" )]] auto compute_previous_frame( uint32 index ) const -> uint32;
+    [[nodiscard( "Const getter" )]] auto compute_next_frame( uint32 index ) const -> uint32;
 
     [[nodiscard( "Const getter" )]]
     auto command_pool( ) const -> CommandPool const&;
