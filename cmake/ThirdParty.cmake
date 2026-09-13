@@ -76,21 +76,7 @@ cpmaddpackage(
   TRUE
 )
 cpmaddpackage( "gh:Neargye/magic_enum@0.7.3" )
-cpmaddpackage(
-  NAME
-  range-v3
-  GITHUB_REPOSITORY
-  ericniebler/range-v3
-  GIT_TAG
-  0.12.0
-  OPTIONS
-  "RANGES_CXX_STD 20"
-  # It's header only and the ThirdParty.cmake file adds
-  # global flags that break CUDA on windows
-  DOWNLOAD_ONLY
-  TRUE
-)
-cpmaddpackage( "gh:gabime/spdlog@1.12.0" )
+cpmaddpackage( "gh:gabime/spdlog@1.17.0" )
 
 if( cxxopts_ADDED )
   add_library(
@@ -128,32 +114,6 @@ if( spdlog_ADDED )
     SYSTEM
     INTERFACE
     $<BUILD_INTERFACE:${spdlog_SOURCE_DIR}/include>
-  )
-endif()
-
-if( range-v3_ADDED )
-  add_library(
-    range-v3
-    INTERFACE
-  )
-  add_library(
-    range-v3::range-v3
-    ALIAS
-    range-v3
-  )
-  target_include_directories(
-    range-v3
-    SYSTEM
-    INTERFACE
-    # Mark external include directories as system includes to avoid warnings.
-    $<BUILD_INTERFACE:${range-v3_SOURCE_DIR}/include>
-  )
-  target_compile_options(
-    range-v3
-    INTERFACE
-    # Fix build warnings on Windows
-    $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->
-    $<$<COMPILE_LANG_AND_ID:CUDA,MSVC>:-Xcompiler=/permissive->
   )
 endif()
 

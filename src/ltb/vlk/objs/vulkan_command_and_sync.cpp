@@ -10,9 +10,10 @@
 #include "ltb/vlk/swapchain.hpp"
 
 // external
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
+
+// standard
+#include <ranges>
 
 namespace ltb::vlk::objs
 {
@@ -226,10 +227,10 @@ auto VulkanCommandAndSync::end_frame(
     vk::Queue const&                        submit_queue
 ) -> utils::Result< void >
 {
-    auto const wait_semaphores = wait_until_signaled | ranges::views::transform( GetSemaphore{ } )
-                               | ranges::to< std::vector >( );
-    auto const wait_stages = wait_until_signaled | ranges::views::transform( GetStage{ } )
-                           | ranges::to< std::vector >( );
+    auto const wait_semaphores = wait_until_signaled | std::views::transform( GetSemaphore{ } )
+                               | std::ranges::to< std::vector >( );
+    auto const wait_stages = wait_until_signaled | std::views::transform( GetStage{ } )
+                           | std::ranges::to< std::vector >( );
 
     auto const submit_info = vk::SubmitInfo{ }
                                  .setWaitSemaphores( wait_semaphores )

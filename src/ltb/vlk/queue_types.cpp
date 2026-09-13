@@ -8,11 +8,11 @@
 
 // external
 #include <magic_enum.hpp>
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/remove_if.hpp>
-#include <range/v3/view/transform.hpp>
+#include <spdlog/fmt/ranges.h>
 #include <spdlog/spdlog.h>
+
+// standard
+#include <ranges>
 
 namespace ltb::vlk
 {
@@ -35,9 +35,9 @@ auto all_queue_families_present(
 ) -> utils::Result< QueueFamilyMap >
 {
     if ( auto const unsupported_types
-         = expected_types | ranges::views::remove_if( ContainedBy{ queue_families } )
-         | ranges::views::transform( magic_enum::enum_name< QueueType > )
-         | ranges::to< std::vector< std::string > >( );
+         = expected_types | std::views::filter( std::not_fn( ContainedBy{ queue_families } ) )
+         | std::views::transform( magic_enum::enum_name< QueueType > )
+         | std::ranges::to< std::vector< std::string > >( );
          !unsupported_types.empty( ) )
     {
         return LTB_MAKE_UNEXPECTED_ERROR(
@@ -94,9 +94,9 @@ auto build_queue_family_map(
     vk::SurfaceKHR const&                   surface
 ) -> utils::Result< QueueFamilyMap >
 {
-    auto expected_types = types | ranges::views::transform( ToQueueType{ } )
-                        | ranges::views::filter( NotUnknownQueueType{ } )
-                        | ranges::to< std::vector >( );
+    auto expected_types = types | std::views::transform( ToQueueType{ } )
+                        | std::views::filter( NotUnknownQueueType{ } )
+                        | std::ranges::to< std::vector >( );
     if ( surface )
     {
         expected_types.push_back( QueueType::Surface );

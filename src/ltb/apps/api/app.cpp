@@ -13,7 +13,6 @@
 // external
 #include "ltb/window/glfw_context.hpp"
 #include <glm/gtc/matrix_transform.hpp>
-#include <range/v3/range/conversion.hpp>
 #include <spdlog/spdlog.h>
 
 namespace ltb

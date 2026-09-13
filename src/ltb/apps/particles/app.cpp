@@ -5,18 +5,17 @@
 
 // project
 #include "ltb/exec/app_defaults.hpp"
-#include "ltb/vlk/ltb_vlk_config.hpp"
 #include "ltb/vlk/buffer_utils.hpp"
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/device_memory_utils.hpp"
+#include "ltb/vlk/ltb_vlk_config.hpp"
 
 // external
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
 
 // standard
 #include <random>
+#include <ranges>
 
 namespace ltb
 {
@@ -51,7 +50,7 @@ auto ParticlesApp::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
 {
     if ( this->is_initialized( ) )
     {
-        return exec::UpdateLoopStatus{};
+        return exec::UpdateLoopStatus{ };
     }
 
     LTB_CHECK( this->initialize_gpu_presentation( )
@@ -64,7 +63,7 @@ auto ParticlesApp::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
 
     initialized_ = true;
 
-    return exec::UpdateLoopStatus{};
+    return exec::UpdateLoopStatus{ };
 }
 
 auto ParticlesApp::is_initialized( ) const -> bool
@@ -281,8 +280,8 @@ auto ParticlesApp::initialize_particles( ) -> utils::Result< ParticlesApp* >
     LTB_CHECK( tmp_copy_command_buffer.initialize( ) );
 
     auto const copy_ranges = gpu_particles_.layout( ).ranges
-                           | ranges::views::transform( MakeCopyRegion{ } )
-                           | ranges::to< std::vector >( );
+                           | std::views::transform( MakeCopyRegion{ } )
+                           | std::ranges::to< std::vector >( );
 
     LTB_CHECK(
         vlk::copy_buffer(

@@ -11,9 +11,10 @@
 #include "ltb/vlk/shader_module.hpp"
 
 // external
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
+
+// standard
+#include <ranges>
 
 namespace ltb::vlk
 {
@@ -55,8 +56,8 @@ auto GraphicsPipeline::initialize( GraphicsPipelineSettings settings ) -> utils:
     }
 
     auto const shader_stages = shader_modules_
-                             | ranges::views::transform( GetShaderStageCreateInfo{ } )
-                             | ranges::to< std::vector >( );
+                             | std::views::transform( GetShaderStageCreateInfo{ } )
+                             | std::ranges::to< std::vector >( );
 
     auto const vertex_input_info
         = vk::PipelineVertexInputStateCreateInfo{ }

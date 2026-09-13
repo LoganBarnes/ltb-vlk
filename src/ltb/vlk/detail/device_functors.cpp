@@ -8,16 +8,12 @@
 #include "ltb/vlk/instance.hpp"
 
 // external
-#include <range/v3/algorithm/any_of.hpp>
-#include <range/v3/algorithm/max.hpp>
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/map.hpp>
-#include <range/v3/view/remove_if.hpp>
+#include <spdlog/fmt/ranges.h>
 #include <spdlog/spdlog.h>
 
 // standard
 #include <queue>
+#include <ranges>
 #include <set>
 
 namespace ltb::vlk::detail
@@ -41,7 +37,7 @@ struct ContainsExtension
 
     auto operator( )( char const* const extension_name ) const -> bool
     {
-        return ranges::any_of( available_extensions, ExtensionNameMatches{ extension_name } );
+        return std::ranges::any_of( available_extensions, ExtensionNameMatches{ extension_name } );
     }
 };
 
@@ -57,8 +53,9 @@ auto CheckExtensionSupport::operator( )( vk::PhysicalDevice const& physical_devi
 
     // Find any `extensions` that are not listed in `available_extensions`.
     if ( auto const unsupported_extensions
-         = extensions | ranges::views::remove_if( ContainsExtension{ available_extensions } )
-         | ranges::to< std::set >;
+         = extensions
+         | std::views::filter( std::not_fn( ContainsExtension{ available_extensions } ) )
+         | std::ranges::to< std::set >( );
          !unsupported_extensions.empty( ) )
     {
         return LTB_MAKE_UNEXPECTED_ERROR(
@@ -80,8 +77,8 @@ auto AppendSupportedExtensions::operator( )( vk::PhysicalDevice const& physical_
 
     // Keep all `extensions` that are listed in `available_extensions`.
     auto const supported_extensions
-        = optional_extensions | ranges::views::filter( ContainsExtension{ available_extensions } )
-        | ranges::to< std::set >;
+        = optional_extensions | std::views::filter( ContainsExtension{ available_extensions } )
+        | std::ranges::to< std::set >( );
 
     extensions.insert(
         // Append supported extensions
@@ -144,7 +141,7 @@ SuitablePhysicalDevice::SuitablePhysicalDevice(
     , extensions( std::move( supported_extensions ) )
 {
     auto const properties = physical_device.getProperties( );
-    spdlog::info( "Found device: {}", properties.deviceName );
+    spdlog::info( "Found device: {}", std::string{ properties.deviceName } );
 
     if ( vk::PhysicalDeviceType::eDiscreteGpu == properties.deviceType )
     {

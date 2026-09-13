@@ -11,6 +11,9 @@
 // external
 #include <spdlog/spdlog.h>
 
+// standard
+#include <ranges>
+
 namespace ltb::vlk::objs
 {
 
@@ -58,8 +61,8 @@ auto VulkanGraphicsPipeline::initialize( VulkanGraphicsPipelineSettings settings
                        } ) );
     }
 
-    auto descriptor_set_layouts = descriptor_set_layouts_ | ranges::views::transform( Get{ } )
-                                | ranges::to< std::vector >( );
+    auto descriptor_set_layouts = descriptor_set_layouts_ | std::views::transform( Get{ } )
+                                | std::ranges::to< std::vector >( );
 
     LTB_CHECK( pipeline_layout_.initialize( {
         .descriptor_set_layouts = std::move( descriptor_set_layouts ),

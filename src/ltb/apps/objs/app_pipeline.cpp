@@ -11,7 +11,6 @@
 
 // external
 #include "ltb/vlk/command_pool.hpp"
-#include <range/v3/range/conversion.hpp>
 #include <spdlog/spdlog.h>
 
 namespace ltb

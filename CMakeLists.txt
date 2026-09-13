@@ -92,7 +92,6 @@ target_link_libraries(
   Threads::Threads
   tl::expected
   magic_enum::magic_enum
-  range-v3::range-v3
   spdlog::spdlog
   cxxopts::cxxopts
   $<TARGET_NAME_IF_EXISTS:TBB::tbb>

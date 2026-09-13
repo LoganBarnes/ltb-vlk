@@ -12,9 +12,10 @@
 #include "ltb/vlk/surface.hpp"
 
 // external
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/map.hpp>
 #include <spdlog/spdlog.h>
+
+// standard
+#include <ranges>
 
 namespace ltb::vlk
 {
@@ -114,7 +115,7 @@ auto Swapchain::initialize( SwapchainSettings settings, Reinitialize const reini
     spdlog::trace( "Swapchain image sharing: {}", to_string( image_sharing_mode ) );
 
     auto const queue_family_indices
-        = queue_families | ranges::views::values | ranges::to< std::vector >( );
+        = queue_families | std::views::values | std::ranges::to< std::vector >( );
 
     auto const create_info = vk::SwapchainCreateInfoKHR{ }
                                  .setSurface( surface_.get( ) )

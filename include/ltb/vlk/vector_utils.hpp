@@ -7,9 +7,8 @@
 #include "ltb/utils/container_utils.hpp"
 #include "ltb/utils/result.hpp"
 
-// external
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/transform.hpp>
+// standard
+#include <ranges>
 
 namespace ltb::vlk
 {
@@ -49,8 +48,8 @@ auto get_member_functions(
 ) -> std::vector< std::decay_t< Data > >
 {
     return objects
-         | ranges::views::transform( utils::GetMemberFunction< Data, Object >{ member_function } )
-         | ranges::to< std::vector >( );
+         | std::views::transform( utils::GetMemberFunction< Data, Object >{ member_function } )
+         | std::ranges::to< std::vector >( );
 }
 
 template < typename Object, typename Data >
@@ -60,8 +59,8 @@ auto get_member_functions(
 ) -> std::vector< std::decay_t< Data > >
 {
     return objects
-         | ranges::views::transform( utils::GetMemberFunction< Data, Object >{ member_function } )
-         | ranges::to< std::vector >( );
+         | std::views::transform( utils::GetMemberFunction< Data, Object >{ member_function } )
+         | std::ranges::to< std::vector >( );
 }
 
 } // namespace ltb::vlk

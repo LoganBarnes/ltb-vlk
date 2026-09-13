@@ -9,9 +9,10 @@
 #include "ltb/vlk/physical_device.hpp"
 
 // external
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
+
+// standard
+#include <ranges>
 
 namespace ltb::vlk
 {
@@ -148,9 +149,8 @@ auto compute_memory_layout( std::vector< vk::MemoryRequirements > const& require
 {
     auto layout = MemoryLayout{ };
 
-    layout.ranges = requirements
-                  | ranges::views::transform( AppendMemoryRange{ layout.total_size } )
-                  | ranges::to< std::vector >( );
+    layout.ranges = requirements | std::views::transform( AppendMemoryRange{ layout.total_size } )
+                  | std::ranges::to< std::vector >( );
 
     return layout;
 }

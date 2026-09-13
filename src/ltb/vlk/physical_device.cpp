@@ -10,15 +10,12 @@
 #include "ltb/vlk/surface.hpp"
 
 // external
-#include <range/v3/algorithm/all_of.hpp>
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/map.hpp>
-#include <range/v3/view/transform.hpp>
+#include <spdlog/fmt/ranges.h>
 #include <spdlog/spdlog.h>
 
 // standard
-
 #include <queue>
+#include <ranges>
 
 namespace ltb::vlk
 {
@@ -150,9 +147,10 @@ auto PhysicalDevice::initialize( DeviceSettings settings, Surface const* const s
     extensions_            = std::move( selected_device.extensions );
     properties_            = physical_device_.getProperties( );
     queue_families_        = std::move( selected_device.queue_families );
-    unique_queue_families_ = queue_families_ | ranges::views::values | ranges::to< std::set >( );
+    unique_queue_families_ = queue_families_ | std::views::values | std::ranges::to< std::set >( );
 
-    spdlog::info( "Selected device {}", physical_device_.getProperties( ).deviceName );
+    spdlog::
+        info( "Selected device {}", std::string{ physical_device_.getProperties( ).deviceName } );
 
     return utils::success( );
 }
@@ -211,9 +209,13 @@ auto PhysicalDevice::find_memory_type_index(
 
     for ( auto i = 0U; i < device_memory_properties.memoryTypeCount; ++i )
     {
-        if ( ranges::all_of(
+        if ( std::ranges::all_of(
                  memory_requirements,
-                 detail::IsSuitableMemoryType{ i, device_memory_properties, memory_properties }
+                 detail::IsSuitableMemoryType{
+                     .index                    = i,
+                     .device_memory_properties = device_memory_properties,
+                     .properties               = memory_properties
+                 }
              ) )
         {
             return i;

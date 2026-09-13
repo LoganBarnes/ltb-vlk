@@ -11,12 +11,11 @@
 #include "ltb/vlk/ltb_vlk_config.hpp"
 
 // external
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
 
 // standard
 #include <random>
+#include <ranges>
 
 namespace ltb
 {
@@ -357,8 +356,8 @@ auto Particles2App::initialize_particles( ) -> utils::Result< Particles2App* >
     LTB_CHECK( tmp_copy_command_buffer.initialize( ) );
 
     auto const copy_ranges = gpu_particles_.layout( ).ranges
-                           | ranges::views::transform( vlk::MakeCopyRegion{ } )
-                           | ranges::to< std::vector >( );
+                           | std::views::transform( vlk::MakeCopyRegion{ } )
+                           | std::ranges::to< std::vector >( );
 
     LTB_CHECK(
         vlk::copy_buffer(
