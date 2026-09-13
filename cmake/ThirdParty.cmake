@@ -10,12 +10,13 @@ find_package( Threads REQUIRED )
 # link Intel's Thread Building Blocks (TBB) library.
 if( NOT MSVC )
   # MacOS: brew install tbb
-  # Linux: sudo apt update libtbb-dev
+  # Linux: sudo apt install libtbb-dev
   find_package( TBB REQUIRED )
 endif()
 
 # Graphics APIs
 find_package( Vulkan REQUIRED )
+message(STATUS "Vulkan version ${Vulkan_VERSION}")
 
 ### External Repositories ###
 cpmaddpackage(

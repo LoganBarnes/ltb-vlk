@@ -6,11 +6,11 @@
 // project
 #include "ltb/gui/imgui_context.hpp"
 #include "ltb/gui/imgui_glfw.hpp"
-#include "ltb/gui/imgui_setup.hpp"
 #include "ltb/gui/imgui_vulkan.hpp"
+#include "ltb/utils/types.hpp"
 #include "ltb/vlk/objs/fwd.hpp"
-#include "ltb/window/fwd.hpp"
 #include "ltb/vlk/vulkan.hpp"
+#include "ltb/window/fwd.hpp"
 
 namespace ltb::gui
 {
@@ -63,7 +63,7 @@ private:
     /// \brief RAII object to handle ImGui Vulkan setup and destruction.
     ImguiVulkanHandle imgui_vulkan_ = nullptr;
 
-    uint min_image_count_ = 0U;
+    uint32 min_image_count_ = 0U;
 };
 
 } // namespace ltb::gui

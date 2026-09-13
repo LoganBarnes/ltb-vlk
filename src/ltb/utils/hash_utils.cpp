@@ -9,10 +9,10 @@
 namespace ltb::utils
 {
 
-auto string_seed_to_uint( std::string const& str ) -> std::uint32_t
+auto string_seed_to_uint( std::string const& str ) -> uint32
 {
     auto seed_seq = std::seed_seq( str.begin( ), str.end( ) );
-    auto seed     = std::vector< std::uint32_t >( 1ul );
+    auto seed     = std::vector< uint32 >( 1UL );
     seed_seq.generate( seed.begin( ), seed.end( ) );
     return seed.back( );
 }

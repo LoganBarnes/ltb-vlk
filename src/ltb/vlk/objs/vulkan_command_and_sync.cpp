@@ -285,13 +285,13 @@ auto VulkanCommandAndSync::previous_frame( ) const -> uint32
     return compute_previous_frame( frame_index_ );
 }
 
-auto VulkanCommandAndSync::compute_previous_frame( uint const index ) const -> uint32
+auto VulkanCommandAndSync::compute_previous_frame( uint32 const index ) const -> uint32
 {
     auto const frame_count = static_cast< uint32 >( command_buffers_.size( ) );
     return ( ( index + frame_count ) - 1U ) % frame_count;
 }
 
-auto VulkanCommandAndSync::compute_next_frame( uint const index ) const -> uint32
+auto VulkanCommandAndSync::compute_next_frame( uint32 const index ) const -> uint32
 {
     auto const frame_count = static_cast< uint32 >( command_buffers_.size( ) );
     return ( index + 1U ) % frame_count;
