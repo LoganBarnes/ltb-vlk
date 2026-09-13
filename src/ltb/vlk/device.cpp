@@ -9,9 +9,10 @@
 #include "ltb/vlk/physical_device.hpp"
 
 // external
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
+
+// standard
+#include <ranges>
 
 namespace ltb::vlk
 {
@@ -62,8 +63,8 @@ auto Device::initialize( ) -> utils::Result< void >
 
     auto const queue_create_infos
         = physical_device_.unique_queue_families( )
-        | ranges::views::transform( CreateDeviceQueueCreateInfo{ queue_priorities } )
-        | ranges::to< std::vector >( );
+        | std::views::transform( CreateDeviceQueueCreateInfo{ queue_priorities } )
+        | std::ranges::to< std::vector >( );
 
     auto enable_fifo_latest_ready = vk::PhysicalDevicePresentModeFifoLatestReadyFeaturesKHR{ true };
 
@@ -94,7 +95,8 @@ auto Device::initialize( ) -> utils::Result< void >
 
     device_ = std::move( device );
     queues_ = physical_device_.queue_families( )
-            | ranges::views::transform( MakeQueuePair{ device_ } ) | ranges::to< QueueMap >( );
+            | std::ranges::views::transform( MakeQueuePair{ device_ } )
+            | std::ranges::to< QueueMap >( );
 
     return utils::success( );
 }

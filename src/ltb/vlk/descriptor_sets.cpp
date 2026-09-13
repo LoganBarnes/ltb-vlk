@@ -9,10 +9,6 @@
 #include "ltb/vlk/descriptor_pool.hpp"
 #include "ltb/vlk/device.hpp"
 
-// external
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/transform.hpp>
-
 namespace ltb::vlk
 {
 

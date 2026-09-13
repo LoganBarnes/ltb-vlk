@@ -5,12 +5,10 @@
 
 // external
 #include <magic_enum.hpp>
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/cache1.hpp>
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/join.hpp>
-#include <range/v3/view/transform.hpp>
 #include <spdlog/spdlog.h>
+
+// standard
+#include <ranges>
 
 namespace ltb::utils
 {
@@ -20,11 +18,11 @@ auto try_setting_log_level( std::string const& log_level ) -> utils::Result< voi
 
     // log_levels -> {{level::debug, "debug"}, {level::trace, "trace"}, ... etc.}
     auto const log_levels = magic_enum::enum_entries< spdlog::level::level_enum >( )
-                          | ranges::views::filter( []( auto const& value_and_name ) {
+                          | std::views::filter( []( auto const& value_and_name ) {
                                 // remove the 'n_levels' enum from the list.
                                 return value_and_name.first != spdlog::level::n_levels;
                             } )
-                          | ranges::to< std::vector >;
+                          | std::ranges::to< std::vector >( );
 
     auto log_level_specified = false;
 
@@ -47,14 +45,13 @@ auto try_setting_log_level( std::string const& log_level ) -> utils::Result< voi
         auto const log_levels_list
             = log_levels
             // {{level::debug, "debug"},{level::trace, "trace"},...} => {"debug", "trace",...}
-            | ranges::views::transform( []( auto const& value_and_name ) {
+            | std::views::transform( []( auto const& value_and_name ) {
                   //
                   return std::string( value_and_name.second );
               } )
-            | ranges::views::cache1
             // {"debug", "trace",...} => "debug\ntrace\n...";
-            | ranges::views::join( '\n' ) //
-            | ranges::to< std::string >;
+            | std::views::join_with( '\n' ) //
+            | std::ranges::to< std::string >( );
 
         return LTB_MAKE_UNEXPECTED_ERROR(
             "Unrecognized log level: '{}'\n"
@@ -65,7 +62,7 @@ auto try_setting_log_level( std::string const& log_level ) -> utils::Result< voi
         );
     }
 
-    return utils::success( );
+    return success( );
 }
 
 } // namespace ltb::utils
