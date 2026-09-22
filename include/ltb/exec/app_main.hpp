@@ -60,10 +60,9 @@ auto windowed_app_main( int32 const argc, char const* const* const argv ) -> int
         title = executable_path.filename( ).string( );
     }
 
-    return windowed_app_main< WindowedApp >( window::WindowSettings{
-        .title        = title,
-        .initial_size = std::nullopt,
-    } );
+    /// \todo: Convert command line args to settings
+
+    return windowed_app_main< WindowedApp >( window::WindowSettings{ .title = title } );
 }
 
 } // namespace ltb::exec
