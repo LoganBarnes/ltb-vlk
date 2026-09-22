@@ -5,10 +5,10 @@
 
 // project
 #include "ltb/exec/app_defaults.hpp"
-#include "ltb/vlk/ltb_vlk_config.hpp"
 #include "ltb/vlk/buffer_utils.hpp"
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/device_memory_utils.hpp"
+#include "ltb/vlk/ltb_vlk_config.hpp"
 
 // external
 #include "ltb/cam/camera_2d.hpp"
@@ -71,7 +71,7 @@ auto ObjsApp::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
 {
     if ( this->is_initialized( ) )
     {
-        return exec::UpdateLoopStatus{};
+        return exec::UpdateLoopStatus{ };
     }
     LTB_CHECK_VALID( glfw_context_.is_initialized( ) );
     LTB_CHECK_VALID( glfw_window_.is_initialized( ) );
@@ -88,7 +88,7 @@ auto ObjsApp::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
 
     initialized_ = true;
 
-    return exec::UpdateLoopStatus{};
+    return exec::UpdateLoopStatus{ };
 }
 
 auto ObjsApp::is_initialized( ) const -> bool

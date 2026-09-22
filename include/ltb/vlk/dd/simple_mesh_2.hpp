@@ -27,13 +27,15 @@ struct SimpleModelUniforms
 {
     glm::mat3x4 transform = glm::identity< glm::mat3x4 >( );
 };
-static_assert(sizeof(SimpleModelUniforms) == 48U);
+
+static_assert( sizeof( SimpleModelUniforms ) == 48U );
 
 struct SimpleDisplayUniforms
 {
     glm::vec4 color = glm::vec4( 1.0F );
 };
-static_assert(sizeof(SimpleDisplayUniforms) == 16U);
+
+static_assert( sizeof( SimpleDisplayUniforms ) == 16U );
 
 struct SimpleMeshUniforms
 {

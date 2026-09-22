@@ -4,9 +4,9 @@
 #include "app_pipeline.hpp"
 
 // project
-#include "ltb/vlk/ltb_vlk_config.hpp"
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/device_memory_utils.hpp"
+#include "ltb/vlk/ltb_vlk_config.hpp"
 #include "ltb/vlk/objs/frame_info.hpp"
 
 // external
