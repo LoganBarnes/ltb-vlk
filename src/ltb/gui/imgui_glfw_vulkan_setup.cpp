@@ -56,18 +56,7 @@ auto ImguiGlfwVulkanSetup::initialize( ) -> utils::Result< void >
 
     if ( dpi_handling_ == DpiFontHandling::Scale )
     {
-        // If the user wants to scale the fonts based on the primary monitor's DPI,
-        // we need to get the content scale of the primary monitor.
-        // This is necessary for high-DPI screens where the default font size may be too small.
-        auto primary_monitor_scale = glm::vec2{ 1.0F, 1.0F };
-        if ( GLFWmonitor* monitor = ::glfwGetPrimaryMonitor( ) )
-        {
-            ::glfwGetMonitorContentScale(
-                monitor,
-                &primary_monitor_scale.x,
-                &primary_monitor_scale.y
-            );
-        }
+        io.ConfigFlags |= ::ImGuiConfigFlags_DpiEnableScaleFonts;
     }
 
     // No more errors will happen. Store all the initialized objects.
