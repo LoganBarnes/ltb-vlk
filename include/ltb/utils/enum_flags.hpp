@@ -5,23 +5,24 @@
 
 // external
 #include <magic_enum.hpp>
-#include <range/v3/range/conversion.hpp>
-#include <range/v3/view/filter.hpp>
 
 // standard
 #include <limits>
+#include <ranges>
 #include <type_traits>
 
 namespace ltb::utils
 {
 
-template < typename E, std::enable_if_t< std::is_enum_v< E >, int > = 0 >
+template < typename E >
+    requires std::is_enum_v< E >
 constexpr auto to_underlying( E const& value )
 {
     return static_cast< std::underlying_type_t< E > >( value );
 }
 
-template < typename E, std::enable_if_t< std::is_enum_v< E >, int > = 0 >
+template < typename E >
+    requires std::is_enum_v< E >
 constexpr auto from_underlying( std::underlying_type_t< E > const& value ) -> E
 {
     return static_cast< E >( value );
@@ -40,18 +41,19 @@ constexpr auto from_underlying( std::underlying_type_t< E > const& value ) -> E
 /// to_bits(Enum::second); // -> 0b0010
 /// to_bits(Enum::third);  // -> 0b0100
 /// \endcode
-template < typename E, std::enable_if_t< std::is_enum_v< E >, int > = 0 >
+template < typename E >
+    requires std::is_enum_v< E >
 constexpr auto to_bits( E type ) -> std::underlying_type_t< E >
 {
     return std::underlying_type_t< E >( 1 ) << to_underlying( type );
 }
 
 template < typename E >
+    requires std::is_enum_v< E >
 struct Flags
 {
     using Type = std::underlying_type_t< E >;
 
-    static_assert( std::is_enum_v< E > );
     static_assert( magic_enum::enum_count< E >( ) <= std::numeric_limits< Type >::digits );
 
     Flags( ) = default;
@@ -67,7 +69,7 @@ struct Flags
     {
     }
 
-    operator bool( ) const
+    explicit operator bool( ) const
     {
         return bits != 0;
     } // NOLINT(google-explicit-constructor)
@@ -94,7 +96,7 @@ namespace flag_operators
 template < typename E >
 constexpr auto operator~( Flags< E > flags ) noexcept -> Flags< E >
 {
-    return Flags< E >{ static_cast< typename Flags< E >::Type >( ~flags.bits ) };
+    return Flags< E >{ static_cast< Flags< E >::Type >( ~flags.bits ) };
 }
 
 template < typename E >
@@ -107,7 +109,7 @@ constexpr auto operator~( E value ) noexcept -> Flags< E >
 template < typename E >
 constexpr auto operator|( Flags< E > lhs, Flags< E > rhs ) noexcept -> Flags< E >
 {
-    return Flags< E >{ static_cast< typename Flags< E >::Type >( lhs.bits | rhs.bits ) };
+    return Flags< E >{ static_cast< Flags< E >::Type >( lhs.bits | rhs.bits ) };
 }
 
 template < typename E >
@@ -132,7 +134,7 @@ constexpr auto operator|( E lhs, E rhs ) noexcept -> Flags< E >
 template < typename E >
 constexpr auto operator&( Flags< E > lhs, Flags< E > rhs ) noexcept -> Flags< E >
 {
-    return Flags< E >{ static_cast< typename Flags< E >::Type >( lhs.bits & rhs.bits ) };
+    return Flags< E >{ static_cast< Flags< E >::Type >( lhs.bits & rhs.bits ) };
 }
 
 template < typename E >
@@ -157,7 +159,7 @@ constexpr auto operator&( E lhs, E rhs ) noexcept -> Flags< E >
 template < typename E >
 constexpr auto operator^( Flags< E > lhs, Flags< E > rhs ) noexcept -> Flags< E >
 {
-    return Flags< E >{ static_cast< typename Flags< E >::Type >( lhs.bits ^ rhs.bits ) };
+    return Flags< E >{ static_cast< Flags< E >::Type >( lhs.bits ^ rhs.bits ) };
 }
 
 template < typename E >
@@ -258,7 +260,7 @@ template < typename E >
 constexpr auto has_flag( Flags< E > flags, E flag ) -> bool
 {
     using namespace flag_operators;
-    return flags & flag;
+    return make_flags( flag ) == ( flags & flag );
 }
 
 template < typename E >
@@ -275,13 +277,22 @@ constexpr auto all_flags( ) -> Flags< E >
     return ~no_flags< E >( );
 }
 
+template < typename E >
+struct HasFlag
+{
+    Flags< E >& flags;
+
+    constexpr auto operator( )( E flag ) const -> bool
+    {
+        return has_flag( flags, flag );
+    }
+};
+
 template < template < typename... > typename Container, typename E >
 auto to( Flags< E > const& flags )
 {
-
-    return magic_enum::enum_values< E >( ) //
-         | ranges::views::filter( [ flags ]( E flag ) { return utils::has_flag( flags, flag ); } )
-         | ranges::to< Container< E > >( );
+    return magic_enum::enum_values< E >( ) | std::views::filter( HasFlag< E >{ flags } )
+         | std::ranges::to< Container< E > >( );
 }
 
 } // namespace ltb::utils
