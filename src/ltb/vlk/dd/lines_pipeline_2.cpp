@@ -205,6 +205,17 @@ auto LinesPipeline2::initialize_mesh(
     return &mesh_data.uniforms;
 }
 
+auto LinesPipeline2::clear_meshes( ) -> utils::Result< void >
+{
+    // A lazy way of synchronization. This function is not expected to be
+    // called often so this slower form of synchronization is acceptable.
+    VK_CHECK( gpu_.device( ).get( ).waitIdle( ) );
+
+    mesh_data_.clear( );
+
+    return utils::success( );
+}
+
 auto LinesPipeline2::draw( objs::FrameInfo const& frame ) -> utils::Result< void >
 {
     pipeline_.bind( frame.command_buffer );

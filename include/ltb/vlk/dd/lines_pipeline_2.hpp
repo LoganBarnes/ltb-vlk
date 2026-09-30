@@ -36,6 +36,10 @@ public:
     initialize_mesh( SimpleMesh2 const& mesh, CommandPool& command_pool, vk::Queue const& queue )
         -> utils::Result< SimpleMeshUniforms* >;
 
+    // Waits for the GPU to be idle, then destroys all meshes previously added via
+    // `initialize_mesh()` so new ones can be added in their place.
+    auto clear_meshes( ) -> utils::Result< void >;
+
     auto draw( objs::FrameInfo const& frame ) -> utils::Result< void >;
 
 private:
