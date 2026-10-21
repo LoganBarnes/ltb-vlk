@@ -668,7 +668,16 @@ auto ApiApp::render( ) -> utils::Result< void >
         // Swapchain needs to be recreated. Not a real error.
         return utils::success( );
     }
-    VK_CHECK( auto const image_index, image_index_result );
+    if ( image_index_result.result != vk::Result::eSuboptimalKHR
+         && image_index_result.result != vk::Result::eSuccess )
+    {
+        return LTB_MAKE_UNEXPECTED_ERROR(
+            "acquireNextImageKHR failed: {}",
+            vk::to_string( image_index_result.result )
+        );
+    }
+    // Suboptimal is a success code: the image is acquired, so keep rendering.
+    auto const image_index = image_index_result.value;
 
     VK_CHECK( gpu_.device.get( ).resetFences( fences ) );
 

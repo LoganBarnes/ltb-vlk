@@ -6,7 +6,6 @@
 // project
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/device.hpp"
-#include "ltb/vlk/physical_device.hpp"
 #include "ltb/vlk/swapchain.hpp"
 
 // external
@@ -109,7 +108,17 @@ auto VulkanCommandAndSync::start_frame(
         // Swapchain needs to be recreated. Not a real error.
         return std::nullopt;
     }
-    VK_CHECK( auto const image_index, image_index_result );
+    if ( image_index_result.result != vk::Result::eSuboptimalKHR
+         && image_index_result.result != vk::Result::eSuccess )
+    {
+        return LTB_MAKE_UNEXPECTED_ERROR(
+            "acquireNextImageKHR failed: {}",
+            vk::to_string( image_index_result.result )
+        );
+    }
+    // Suboptimal is a success code: the image is acquired and the semaphore will be
+    // signaled, so keep rendering and let the resize handler rebuild the swapchain.
+    auto const image_index = image_index_result.value;
 
     VK_CHECK( gpu_.device( ).get( ).resetFences( fences ) );
 
@@ -210,14 +219,9 @@ auto VulkanCommandAndSync::end_frame( FrameInfo const& frame, vk::Queue const& s
         },
     };
 
-    auto signal_when_finished = std::vector{ render_finished_semaphore };
+    auto const signal_when_finished = std::vector{ render_finished_semaphore };
 
-    return this->end_frame(
-        frame,
-        std::move( wait_until_signaled ),
-        std::move( signal_when_finished ),
-        submit_queue
-    );
+    return this->end_frame( frame, wait_until_signaled, signal_when_finished, submit_queue );
 }
 
 auto VulkanCommandAndSync::end_frame(
