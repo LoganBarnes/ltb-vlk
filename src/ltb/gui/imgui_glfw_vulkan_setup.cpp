@@ -78,19 +78,28 @@ auto ImguiGlfwVulkanSetup::is_initialized( ) const -> bool
 
 auto ImguiGlfwVulkanSetup::new_frame( ) -> void
 {
+    if ( frame_open_ )
+    {
+        // The previous frame was never rendered (e.g. the swapchain was out of date).
+        ImGui::EndFrame( );
+    }
+
     if ( presentation_.swapchain( ).min_image_count( ) != min_image_count_ )
     {
         min_image_count_ = presentation_.swapchain( ).min_image_count( );
         ::ImGui_ImplVulkan_SetMinImageCount( min_image_count_ );
     }
+
     ::ImGui_ImplVulkan_NewFrame( );
     ::ImGui_ImplGlfw_NewFrame( );
     ImGui::NewFrame( );
+    frame_open_ = true;
 }
 
-auto ImguiGlfwVulkanSetup::render( vk::CommandBuffer const& command_buffer ) const -> void
+auto ImguiGlfwVulkanSetup::render( vk::CommandBuffer const& command_buffer ) -> void
 {
     ImGui::Render( );
+    frame_open_ = false;
     ::ImGui_ImplVulkan_RenderDrawData( ImGui::GetDrawData( ), command_buffer );
 }
 

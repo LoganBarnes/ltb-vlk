@@ -26,6 +26,10 @@ layout (binding = 2) uniform ParameterUbo
 void main()
 {
     uint index = gl_GlobalInvocationID.x;
+    if (index >= particles_in.length())
+    {
+        return;
+    }
 
     Particle particle_in = particles_in[index];
 

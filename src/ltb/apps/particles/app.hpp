@@ -16,6 +16,7 @@
 #include "ltb/vlk/objs/vulkan_graphics_pipeline.hpp"
 
 // standard
+#include <optional>
 #include <unordered_set>
 
 namespace ltb
@@ -83,6 +84,8 @@ private:
     utils::Timer timer_ = { };
 
     bool initialized_ = false;
+
+    std::optional< vk::Semaphore > compute_semaphore_ = std::nullopt;
 
     auto initialize_gpu_presentation( ) -> utils::Result< ParticlesApp* >;
     auto initialize_compute_pipeline( ) -> utils::Result< ParticlesApp* >;

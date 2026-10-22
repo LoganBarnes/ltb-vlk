@@ -462,12 +462,30 @@ auto ParticlesApp::compute( ) -> utils::Result< void >
         auto const& frame = maybe_frame.value( );
 
         LTB_CHECK( this->record_compute_commands( frame ) );
+
+        // Chain onto the previous compute step if no render has consumed its semaphore yet.
+        auto wait_until_signaled = std::vector< vlk::objs::SemaphoreAndStage >{ };
+        if ( compute_semaphore_.has_value( ) )
+        {
+            wait_until_signaled.push_back( {
+                .semaphore = compute_semaphore_.value( ),
+                .stage     = vk::PipelineStageFlagBits::eComputeShader,
+            } );
+            compute_semaphore_ = std::nullopt;
+        }
+
+        auto const& compute_finished_semaphore
+            = compute_cmd_and_sync_.get_frame_objects( ).frame_semaphore;
+
         LTB_CHECK( compute_cmd_and_sync_.end_frame(
             frame,
-            { },
-            { compute_cmd_and_sync_.get_frame_objects( ).frame_semaphore },
+            std::move( wait_until_signaled ),
+            { compute_finished_semaphore },
             graphics_and_compute_queue_
         ) );
+
+        compute_semaphore_ = compute_finished_semaphore;
+        compute_cmd_and_sync_.increment_frame( );
     }
 
     return utils::success( );
@@ -518,18 +536,23 @@ auto ParticlesApp::render( ) -> utils::Result< void >
             graphics_cmd_and_sync_.get_present_semaphore( frame )
         );
 
+        auto wait_until_signaled = std::vector< vlk::objs::SemaphoreAndStage >{ };
+        if ( compute_semaphore_.has_value( ) )
+        {
+            wait_until_signaled.push_back( {
+                .semaphore = compute_semaphore_.value( ),
+                .stage     = vk::PipelineStageFlagBits::eVertexInput,
+            } );
+            compute_semaphore_ = std::nullopt;
+        }
+        wait_until_signaled.push_back( {
+            .semaphore = frame.image_semaphore,
+            .stage     = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        } );
+
         LTB_CHECK( graphics_cmd_and_sync_.end_frame(
             frame,
-            {
-                {
-                    compute_cmd_and_sync_.get_frame_objects( ).frame_semaphore,
-                    vk::PipelineStageFlagBits::eVertexInput,
-                },
-                {
-                    frame.image_semaphore,
-                    vk::PipelineStageFlagBits::eColorAttachmentOutput,
-                },
-            },
+            wait_until_signaled,
             { render_finished_semaphore },
             graphics_and_compute_queue_
         ) );
@@ -538,7 +561,6 @@ auto ParticlesApp::render( ) -> utils::Result< void >
                        .present_frame( frame, presentation_.swapchain( ), present_queue_ ) );
 
         graphics_cmd_and_sync_.increment_frame( );
-        compute_cmd_and_sync_.increment_frame( );
     }
 
     return utils::success( );
@@ -582,7 +604,7 @@ auto ParticlesApp::record_render_commands( vlk::objs::FrameInfo const& frame )
 
     LTB_CHECK( graphics_.bind_descriptor_sets( frame ) );
 
-    auto const compute_frame_index = compute_cmd_and_sync_.frame_index( );
+    auto const compute_frame_index = compute_cmd_and_sync_.previous_frame( );
     LTB_CHECK_VALID( compute_frame_index < gpu_particles_.layout( ).ranges.size( ) );
     auto const& vbo_offset = gpu_particles_.layout( ).ranges[ compute_frame_index ].offset;
 

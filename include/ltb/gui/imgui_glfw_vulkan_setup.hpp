@@ -46,7 +46,7 @@ public:
 
     auto new_frame( ) -> void;
 
-    auto render( vk::CommandBuffer const& command_buffer ) const -> void;
+    auto render( vk::CommandBuffer const& command_buffer ) -> void;
 
 private:
     window::GlfwWindow&            glfw_window_;
@@ -64,6 +64,9 @@ private:
     ImguiVulkanHandle imgui_vulkan_ = nullptr;
 
     uint32 min_image_count_ = 0U;
+
+    // True between new_frame() and render(); a skipped render leaves the frame open.
+    bool frame_open_ = false;
 };
 
 } // namespace ltb::gui
