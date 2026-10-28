@@ -224,9 +224,10 @@ auto VulkanPresentation::initialize_swapchain(
     framebuffers_.clear( );
     swapchain_image_views_.clear( );
 
-    auto const extent = swapchain_settings.extent;
-
     LTB_CHECK( swapchain_.initialize( std::move( swapchain_settings ), Reinitialize::Always ) );
+
+    // The swapchain clamps the requested extent to the surface limits.
+    auto const extent = swapchain_.settings( ).extent;
 
     swapchain_image_views_.reserve( swapchain_.images( ).size( ) );
     for ( auto const& image : swapchain_.images( ) )

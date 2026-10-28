@@ -114,8 +114,9 @@ auto Swapchain::initialize( SwapchainSettings settings, Reinitialize const reini
     }
     spdlog::trace( "Swapchain image sharing: {}", to_string( image_sharing_mode ) );
 
+    // Indices must be unique and are only used for concurrent sharing.
     auto const queue_family_indices
-        = queue_families | std::views::values | std::ranges::to< std::vector >( );
+        = physical_device_.unique_queue_families( ) | std::ranges::to< std::vector >( );
 
     auto const create_info = vk::SwapchainCreateInfoKHR{ }
                                  .setSurface( surface_.get( ) )

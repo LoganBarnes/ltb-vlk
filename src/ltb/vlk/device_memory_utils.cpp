@@ -188,17 +188,22 @@ auto append_memory_size(
     vk::MemoryRequirements const& memory_requirements
 ) -> void
 {
-    memory_layout.ranges.push_back( {
-        .size   = memory_requirements.size,
-        .offset = memory_layout.total_size,
-    } );
-    memory_layout.total_size += memory_layout.ranges.back( ).size;
-
+    auto offset = memory_layout.total_size;
     if ( 0U != memory_requirements.alignment )
     {
-        auto const alignment_remainder = memory_layout.total_size % memory_requirements.alignment;
-        memory_layout.total_size += ( memory_requirements.alignment - alignment_remainder );
+        // Each resource must be aligned to its own requirement.
+        auto const alignment_remainder = offset % memory_requirements.alignment;
+        if ( 0U != alignment_remainder )
+        {
+            offset += memory_requirements.alignment - alignment_remainder;
+        }
     }
+
+    memory_layout.ranges.push_back( {
+        .size   = memory_requirements.size,
+        .offset = offset,
+    } );
+    memory_layout.total_size = offset + memory_requirements.size;
 }
 
 auto append_memory_size_n(

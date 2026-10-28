@@ -44,13 +44,13 @@ auto consolidate_transforms_impl( std::vector< Transform > const& transforms )
     constexpr auto transform_operation = TransformToMat{ };
     constexpr auto reduce_operation    = std::multiplies< Matrix >{ };
 
-    return std::transform_reduce(
-        transforms.rbegin( ),
-        transforms.rend( ),
-        initial_value,
-        reduce_operation,
-        transform_operation
-    );
+    // Matrix multiplication isn't commutative, so std::transform_reduce can't be used.
+    auto result = initial_value;
+    for ( auto iter = transforms.rbegin( ); iter != transforms.rend( ); ++iter )
+    {
+        result = reduce_operation( result, transform_operation( *iter ) );
+    }
+    return result;
 }
 
 } // namespace

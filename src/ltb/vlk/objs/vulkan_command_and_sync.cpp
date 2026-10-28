@@ -202,6 +202,12 @@ auto VulkanCommandAndSync::get_frame_objects( uint32 const frame_index )
 auto VulkanCommandAndSync::get_present_semaphore( FrameInfo const& frame )
     -> utils::Result< vk::Semaphore >
 {
+    // The swapchain may have been rebuilt with more images than originally expected.
+    LTB_CHECK_VALID( std::numeric_limits< uint32 >::max( ) != frame.image_index );
+    while ( image_semaphores_.size( ) <= frame.image_index )
+    {
+        LTB_CHECK( image_semaphores_.emplace_back( gpu_.device( ) ).initialize( ) );
+    }
     LTB_CHECK_VALID( frame.image_index < image_semaphores_.size( ) );
 
     return image_semaphores_[ frame.image_index ].get( );

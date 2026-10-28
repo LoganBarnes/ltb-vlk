@@ -163,6 +163,21 @@ auto RenderPass::initialize( RenderPassSettings settings, Swapchain const* const
         }
     }
 
+    // The subpasses may point into a different (copied or moved-from) settings object.
+    // Re-point them at this object's attachment references, which outlive the create call.
+    for ( auto& subpass : settings.subpasses )
+    {
+        if ( ( nullptr != subpass.pColorAttachments )
+             && ( subpass.colorAttachmentCount == settings.color_attachment_refs.size( ) ) )
+        {
+            subpass.pColorAttachments = settings.color_attachment_refs.data( );
+        }
+        if ( nullptr != subpass.pDepthStencilAttachment )
+        {
+            subpass.pDepthStencilAttachment = &settings.depth_attachment_ref;
+        }
+    }
+
     auto const render_pass_info = vk::RenderPassCreateInfo{ }
                                       .setAttachments( settings.attachments )
                                       .setSubpasses( settings.subpasses )
