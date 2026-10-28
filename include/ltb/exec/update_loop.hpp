@@ -23,10 +23,10 @@ struct UpdateRequests
 
 struct UpdateLoopStatus
 {
-    float64         time_scale               = 1.0;
-    utils::Duration cumulative_time          = utils::Duration::zero( );
-    utils::Duration update_time_step         = utils::duration_seconds( 1.0 / 60.0 );
-    utils::Duration minimum_update_time_step = utils::duration_seconds( 0.1 );
+    float64         time_scale       = 1.0;
+    utils::Duration cumulative_time  = utils::Duration::zero( );
+    utils::Duration update_time_step = utils::duration_seconds( 1.0 / 60.0 );
+    utils::Duration max_frame_time   = utils::duration_seconds( 0.1 );
 
     // 0.0 is the previous update, 1.0 is the next update.
     float64 interpolant_between_updates = 0.0;
@@ -67,6 +67,18 @@ concept IsUpdatable = requires( Object obj, UpdateLoopStatus const& status, glm:
     { obj.on_resize( size ) } -> std::same_as< utils::Result< void > >;
 };
 
+// Stores the app's requests and adopts the requested time step (ignored if not positive so
+// the fixed update loop always terminates).
+inline auto apply_requests( UpdateLoopStatus& status, UpdateRequests const& requests ) -> void
+{
+    status.requests = requests;
+
+    if ( requests.update_time_step > utils::Duration::zero( ) )
+    {
+        status.update_time_step = requests.update_time_step;
+    }
+}
+
 template < typename App >
     requires IsUpdatable< App >
 auto single_loop_iteration( InternalLoopState& internal_state, UpdateLoopStatus& status, App& app )
@@ -76,7 +88,7 @@ auto single_loop_iteration( InternalLoopState& internal_state, UpdateLoopStatus&
     auto       frame_time        = new_time - internal_state.previous_time;
     internal_state.previous_time = new_time;
 
-    frame_time = std::min( status.minimum_update_time_step, frame_time );
+    frame_time = std::min( status.max_frame_time, frame_time );
     frame_time = utils::duration_millis( utils::to_millis( frame_time ) * status.time_scale );
 
     // Ignore updates when paused.
@@ -91,7 +103,7 @@ auto single_loop_iteration( InternalLoopState& internal_state, UpdateLoopStatus&
             status.cumulative_time += status.update_time_step;
             internal_state.accumulator -= status.update_time_step;
 
-            status.requests = app.fixed_step_update( status );
+            apply_requests( status, app.fixed_step_update( status ) );
         }
 
         // `interpolant_between_updates` is the normalized (0,1] interpolation value
@@ -102,7 +114,7 @@ auto single_loop_iteration( InternalLoopState& internal_state, UpdateLoopStatus&
             / utils::to_seconds< float64 >( status.update_time_step );
     }
 
-    status.requests = app.frame_update( status );
+    apply_requests( status, app.frame_update( status ) );
 }
 
 template < typename App >
