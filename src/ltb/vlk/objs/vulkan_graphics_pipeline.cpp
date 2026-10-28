@@ -18,8 +18,13 @@ namespace ltb::vlk::objs
 {
 
 VulkanGraphicsPipeline::VulkanGraphicsPipeline( VulkanGpu& gpu, VulkanPresentation& presentation )
+    : VulkanGraphicsPipeline( gpu, presentation.render_pass( ) )
+{
+}
+
+VulkanGraphicsPipeline::VulkanGraphicsPipeline( VulkanGpu& gpu, RenderPass& render_pass )
     : gpu_( gpu )
-    , presentation_( presentation )
+    , render_pass_( render_pass )
 {
 }
 
@@ -31,7 +36,7 @@ auto VulkanGraphicsPipeline::initialize( VulkanGraphicsPipelineSettings settings
         return utils::success( );
     }
     LTB_CHECK_VALID( gpu_.is_initialized( ) );
-    LTB_CHECK_VALID( presentation_.is_initialized( ) );
+    LTB_CHECK_VALID( render_pass_.is_initialized( ) );
 
     LTB_CHECK_VALID( !settings.shader_modules.empty( ) );
     LTB_CHECK_VALID( settings.descriptor_set_count > 0U );

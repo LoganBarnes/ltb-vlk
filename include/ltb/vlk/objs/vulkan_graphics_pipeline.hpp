@@ -33,7 +33,11 @@ struct VulkanGraphicsPipelineSettings
 class VulkanGraphicsPipeline
 {
 public:
+    // Creates a pipeline that is compatible with the presentation's render pass.
     VulkanGraphicsPipeline( VulkanGpu& gpu, VulkanPresentation& presentation );
+
+    // Creates a pipeline that is compatible with any (e.g. offscreen) render pass.
+    VulkanGraphicsPipeline( VulkanGpu& gpu, RenderPass& render_pass );
 
     auto initialize( VulkanGraphicsPipelineSettings settings ) -> utils::Result< void >;
 
@@ -65,8 +69,8 @@ public:
     auto pipeline( ) -> GraphicsPipeline&;
 
 private:
-    VulkanGpu&          gpu_;
-    VulkanPresentation& presentation_;
+    VulkanGpu&  gpu_;
+    RenderPass& render_pass_;
 
     std::vector< ShaderModule > shader_modules_ = { };
 
@@ -77,7 +81,7 @@ private:
 
     GraphicsPipeline pipeline_ = {
         gpu_.device( ),
-        presentation_.render_pass( ),
+        render_pass_,
         shader_modules_,
         pipeline_layout_,
     };
