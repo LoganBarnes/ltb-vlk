@@ -11,6 +11,10 @@
 // external
 #include <spdlog/spdlog.h>
 
+// standard
+#include <algorithm>
+#include <cstring>
+
 namespace ltb::vlk
 {
 namespace
@@ -87,18 +91,18 @@ auto Instance::initialize( InstanceSettings settings, window::GlfwContext const*
     if ( nullptr != glfw )
     {
         auto const glfw_extensions = glfw->get_vulkan_instance_extensions( );
-        auto const previous_size   = extensions.size( );
 
-        auto const inserted_iter = extensions.insert(
-            extensions.end( ),
-            // append glfw extensions
-            glfw_extensions.begin( ),
-            glfw_extensions.end( )
-        );
-
-        if ( std::cmp_not_equal( previous_size, inserted_iter - extensions.begin( ) ) )
+        for ( auto const* const glfw_extension : glfw_extensions )
         {
-            return LTB_MAKE_UNEXPECTED_ERROR( "Failed to insert glfw_extensions" );
+            // Duplicate extension names are not allowed.
+            if ( std::ranges::none_of(
+                     extensions,
+                     [ glfw_extension ]( char const* const existing )
+                     { return 0 == std::strcmp( existing, glfw_extension ); }
+                 ) )
+            {
+                extensions.push_back( glfw_extension );
+            }
         }
     }
 
@@ -115,6 +119,9 @@ auto Instance::initialize( InstanceSettings settings, window::GlfwContext const*
     app_info_ = app_info;
     settings_ = std::move( settings );
     instance_ = std::move( instance );
+
+    // Point at the stored string since the original may have been moved (short strings).
+    app_info_.setPApplicationName( settings_.app_name.c_str( ) );
 
     return utils::success( );
 }

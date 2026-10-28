@@ -153,7 +153,7 @@ auto configure_combo_menu(
     {
         for ( auto const& [ value_label, value ] : labels_and_values )
         {
-            if ( ImGui::Selectable( value_label.c_str( ), value_label == display_str ) )
+            if ( ImGui::Selectable( value_label.c_str( ), value == *current_value ) )
             {
                 *current_value = value;
                 value_updated  = true;

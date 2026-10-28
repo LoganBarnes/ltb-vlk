@@ -30,6 +30,16 @@ auto ShaderModule::initialize( ShaderModuleSettings settings ) -> utils::Result<
 
     LTB_CHECK( auto const code, utils::get_binary_file_contents< uint32 >( settings.spirv_file ) );
 
+    if ( auto const file_size = std::filesystem::file_size( settings.spirv_file );
+         0U != ( file_size % sizeof( uint32 ) ) )
+    {
+        return LTB_MAKE_UNEXPECTED_ERROR(
+            "Invalid SPIR-V file size ({} bytes) for '{}'",
+            file_size,
+            settings.spirv_file.string( )
+        );
+    }
+
     auto const create_info = vk::ShaderModuleCreateInfo{ }.setCode( code );
     VK_CHECK( auto shader_module, device_.get( ).createShaderModuleUnique( create_info ) );
     spdlog::debug( "vk::createShaderModuleUnique() for '{}'", settings.spirv_file.string( ) );

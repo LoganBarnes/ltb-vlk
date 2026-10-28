@@ -116,9 +116,10 @@ auto build_queue_family_map(
                 auto const surface_support,
                 physical_device.getSurfaceSupportKHR( i, surface )
             );
+            // Keep the first matching family so related types share a family when possible.
             if ( surface_support )
             {
-                queue_family_map[ QueueType::Surface ] = i;
+                queue_family_map.try_emplace( QueueType::Surface, i );
             }
         }
 
@@ -126,7 +127,7 @@ auto build_queue_family_map(
         {
             if ( queue_families[ i ].queueFlags & type )
             {
-                queue_family_map[ to_queue_type( type ) ] = i;
+                queue_family_map.try_emplace( to_queue_type( type ), i );
             }
         }
 

@@ -32,7 +32,6 @@
     ::ltb::utils::Error(                                                                           \
         { __FILE__, __LINE__ },                                                                    \
         ::ltb::utils::Error::Severity::Warning,                                                    \
-        ,                                                                                          \
         fmt::format( __VA_ARGS__ )                                                                 \
     )
 
