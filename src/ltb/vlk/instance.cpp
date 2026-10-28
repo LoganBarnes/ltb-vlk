@@ -20,6 +20,27 @@ namespace ltb::vlk
 namespace
 {
 
+struct SameExtensionName
+{
+    char const* name;
+
+    auto operator( )( char const* const other ) const -> bool
+    {
+        return 0 == std::strcmp( name, other );
+    }
+};
+
+/// \brief True if the extension is not already in the list. Duplicates are not allowed.
+struct NotIn
+{
+    std::vector< char const* > const& extensions;
+
+    auto operator( )( char const* const extension ) const -> bool
+    {
+        return std::ranges::none_of( extensions, SameExtensionName{ extension } );
+    }
+};
+
 VKAPI_ATTR auto default_debug_callback(
     vk::DebugUtilsMessageSeverityFlagBitsEXT const      message_severity,
     vk::DebugUtilsMessageTypeFlagsEXT const             message_type,
@@ -90,20 +111,11 @@ auto Instance::initialize( InstanceSettings settings, window::GlfwContext const*
     auto extensions = settings.extensions;
     if ( nullptr != glfw )
     {
-        auto const glfw_extensions = glfw->get_vulkan_instance_extensions( );
-
-        for ( auto const* const glfw_extension : glfw_extensions )
-        {
-            // Duplicate extension names are not allowed.
-            if ( std::ranges::none_of(
-                     extensions,
-                     [ glfw_extension ]( char const* const existing )
-                     { return 0 == std::strcmp( existing, glfw_extension ); }
-                 ) )
-            {
-                extensions.push_back( glfw_extension );
-            }
-        }
+        std::ranges::copy_if(
+            glfw->get_vulkan_instance_extensions( ),
+            std::back_inserter( extensions ),
+            NotIn{ extensions }
+        );
     }
 
     auto const create_info = vk::InstanceCreateInfo( )

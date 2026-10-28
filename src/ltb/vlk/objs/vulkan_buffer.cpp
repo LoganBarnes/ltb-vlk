@@ -31,40 +31,40 @@ auto VulkanBuffer::initialize( VulkanBufferSettings settings ) -> utils::Result<
     } ) );
 
     // Undo any partial initialization on failure so initialize() can be retried.
-    auto const initialize_resources = [ & ]( ) -> utils::Result< void >
-    {
-        LTB_CHECK(
-            auto const memory_range,
-            initialize_memory_chunk(
-                memory_,
-                gpu_.physical_device( ),
-                buffer_.memory_requirements( ),
-                settings.memory_properties
-            )
-        );
-        LTB_CHECK_VALID( settings.layout.total_size <= memory_range.size );
-
-        VK_CHECK( gpu_.device( )
-                      .get( )
-                      .bindBufferMemory( buffer_.get( ), memory_.get( ), memory_range.offset ) );
-
-        if ( settings.store_mapped_value )
-        {
-            LTB_CHECK( mapped_data_, memory_.map( memory_range, { } ) );
-        }
-
-        layout_ = std::move( settings.layout );
-
-        return utils::success( );
-    };
-
-    if ( auto result = initialize_resources( ); !result )
+    if ( auto result = this->initialize_resources( settings ); !result )
     {
         this->reset( );
         return result;
     }
 
     initialized_ = true;
+
+    return utils::success( );
+}
+
+auto VulkanBuffer::initialize_resources( VulkanBufferSettings& settings ) -> utils::Result< void >
+{
+    LTB_CHECK(
+        auto const memory_range,
+        initialize_memory_chunk(
+            memory_,
+            gpu_.physical_device( ),
+            buffer_.memory_requirements( ),
+            settings.memory_properties
+        )
+    );
+    LTB_CHECK_VALID( settings.layout.total_size <= memory_range.size );
+
+    VK_CHECK( gpu_.device( )
+                  .get( )
+                  .bindBufferMemory( buffer_.get( ), memory_.get( ), memory_range.offset ) );
+
+    if ( settings.store_mapped_value )
+    {
+        LTB_CHECK( mapped_data_, memory_.map( memory_range, { } ) );
+    }
+
+    layout_ = std::move( settings.layout );
 
     return utils::success( );
 }

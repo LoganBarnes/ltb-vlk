@@ -52,6 +52,9 @@ public:
     auto mapped_data( ) const -> uint8*;
 
 private:
+    /// \brief Allocates and binds memory for an initialized buffer. The caller resets on failure.
+    auto initialize_resources( VulkanBufferSettings& settings ) -> utils::Result< void >;
+
     VulkanGpu& gpu_;
 
     MemoryLayout layout_      = { };

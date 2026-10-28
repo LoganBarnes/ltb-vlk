@@ -16,6 +16,28 @@
 
 namespace ltb::vlk
 {
+namespace
+{
+
+struct RepointSubpass
+{
+    RenderPassSettings& settings;
+
+    auto operator( )( vk::SubpassDescription& subpass ) const -> void
+    {
+        if ( ( nullptr != subpass.pColorAttachments )
+             && ( subpass.colorAttachmentCount == settings.color_attachment_refs.size( ) ) )
+        {
+            subpass.pColorAttachments = settings.color_attachment_refs.data( );
+        }
+        if ( nullptr != subpass.pDepthStencilAttachment )
+        {
+            subpass.pDepthStencilAttachment = &settings.depth_attachment_ref;
+        }
+    }
+};
+
+} // namespace
 
 auto render_pass_settings_3d( vk::Format color_format, vk::Format depth_format )
     -> RenderPassSettings
@@ -165,18 +187,7 @@ auto RenderPass::initialize( RenderPassSettings settings, Swapchain const* const
 
     // The subpasses may point into a different (copied or moved-from) settings object.
     // Re-point them at this object's attachment references, which outlive the create call.
-    for ( auto& subpass : settings.subpasses )
-    {
-        if ( ( nullptr != subpass.pColorAttachments )
-             && ( subpass.colorAttachmentCount == settings.color_attachment_refs.size( ) ) )
-        {
-            subpass.pColorAttachments = settings.color_attachment_refs.data( );
-        }
-        if ( nullptr != subpass.pDepthStencilAttachment )
-        {
-            subpass.pDepthStencilAttachment = &settings.depth_attachment_ref;
-        }
-    }
+    std::ranges::for_each( settings.subpasses, RepointSubpass{ settings } );
 
     auto const render_pass_info = vk::RenderPassCreateInfo{ }
                                       .setAttachments( settings.attachments )
