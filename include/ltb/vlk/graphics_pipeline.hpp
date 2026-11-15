@@ -56,6 +56,9 @@ struct GraphicsPipelineSettings
               .setDepthBoundsTestEnable( false )
               .setStencilTestEnable( false );
 
+    /// \brief Blend new fragments with the existing color using the fragment's alpha.
+    bool alpha_blending = false;
+
     std::optional< vk::PipelineTessellationStateCreateInfo > tessellation_state = std::nullopt;
 };
 
