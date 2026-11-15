@@ -11,10 +11,35 @@
 // external
 #include <spdlog/spdlog.h>
 
+// standard
+#include <algorithm>
+#include <cstring>
+
 namespace ltb::vlk
 {
 namespace
 {
+
+struct SameExtensionName
+{
+    char const* name;
+
+    auto operator( )( char const* const other ) const -> bool
+    {
+        return 0 == std::strcmp( name, other );
+    }
+};
+
+/// \brief True if the extension is not already in the list. Duplicates are not allowed.
+struct NotIn
+{
+    std::vector< char const* > const& extensions;
+
+    auto operator( )( char const* const extension ) const -> bool
+    {
+        return std::ranges::none_of( extensions, SameExtensionName{ extension } );
+    }
+};
 
 VKAPI_ATTR auto default_debug_callback(
     vk::DebugUtilsMessageSeverityFlagBitsEXT const      message_severity,
@@ -86,20 +111,11 @@ auto Instance::initialize( InstanceSettings settings, window::GlfwContext const*
     auto extensions = settings.extensions;
     if ( nullptr != glfw )
     {
-        auto const glfw_extensions = glfw->get_vulkan_instance_extensions( );
-        auto const previous_size   = extensions.size( );
-
-        auto const inserted_iter = extensions.insert(
-            extensions.end( ),
-            // append glfw extensions
-            glfw_extensions.begin( ),
-            glfw_extensions.end( )
+        std::ranges::copy_if(
+            glfw->get_vulkan_instance_extensions( ),
+            std::back_inserter( extensions ),
+            NotIn{ extensions }
         );
-
-        if ( std::cmp_not_equal( previous_size, inserted_iter - extensions.begin( ) ) )
-        {
-            return LTB_MAKE_UNEXPECTED_ERROR( "Failed to insert glfw_extensions" );
-        }
     }
 
     auto const create_info = vk::InstanceCreateInfo( )
@@ -115,6 +131,9 @@ auto Instance::initialize( InstanceSettings settings, window::GlfwContext const*
     app_info_ = app_info;
     settings_ = std::move( settings );
     instance_ = std::move( instance );
+
+    // Point at the stored string since the original may have been moved (short strings).
+    app_info_.setPApplicationName( settings_.app_name.c_str( ) );
 
     return utils::success( );
 }

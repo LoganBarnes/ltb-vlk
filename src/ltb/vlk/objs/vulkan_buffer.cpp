@@ -30,6 +30,20 @@ auto VulkanBuffer::initialize( VulkanBufferSettings settings ) -> utils::Result<
         .sharing_mode = settings.buffer_sharing_mode,
     } ) );
 
+    // Undo any partial initialization on failure so initialize() can be retried.
+    if ( auto result = this->initialize_resources( settings ); !result )
+    {
+        this->reset( );
+        return result;
+    }
+
+    initialized_ = true;
+
+    return utils::success( );
+}
+
+auto VulkanBuffer::initialize_resources( VulkanBufferSettings& settings ) -> utils::Result< void >
+{
     LTB_CHECK(
         auto const memory_range,
         initialize_memory_chunk(
@@ -52,8 +66,6 @@ auto VulkanBuffer::initialize( VulkanBufferSettings settings ) -> utils::Result<
 
     layout_ = std::move( settings.layout );
 
-    initialized_ = true;
-
     return utils::success( );
 }
 
@@ -67,6 +79,7 @@ auto VulkanBuffer::reset( ) -> void
     memory_.reset( );
     buffer_.reset( );
     layout_      = { };
+    mapped_data_ = nullptr;
     initialized_ = false;
 }
 

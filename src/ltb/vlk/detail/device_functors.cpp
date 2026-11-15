@@ -148,7 +148,7 @@ SuitablePhysicalDevice::SuitablePhysicalDevice(
         score += 1000U;
     }
 
-    score += static_cast< uint32 >( supported_extensions.size( ) ) * 100U;
+    score += static_cast< uint32 >( extensions.size( ) ) * 100U;
 
     // Maximum possible size of textures affects graphics quality
     score += properties.limits.maxImageDimension2D;

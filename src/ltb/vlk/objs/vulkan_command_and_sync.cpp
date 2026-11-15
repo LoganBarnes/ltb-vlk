@@ -120,8 +120,6 @@ auto VulkanCommandAndSync::start_frame(
     // signaled, so keep rendering and let the resize handler rebuild the swapchain.
     auto const image_index = image_index_result.value;
 
-    VK_CHECK( gpu_.device( ).get( ).resetFences( fences ) );
-
     if ( ResetCommandBuffer::Yes == reset_command_buffer )
     {
         constexpr auto reset_flags = vk::CommandBufferResetFlags{ };
@@ -154,8 +152,6 @@ auto VulkanCommandAndSync::start_frame( ResetCommandBuffer const reset_command_b
     auto const     fences       = std::array{ in_flight_fence };
     constexpr auto wait_for_all = true;
     VK_CHECK( gpu_.device( ).get( ).waitForFences( fences, wait_for_all, max_possible_timeout ) );
-
-    VK_CHECK( gpu_.device( ).get( ).resetFences( fences ) );
 
     if ( ResetCommandBuffer::Yes == reset_command_buffer )
     {
@@ -202,6 +198,12 @@ auto VulkanCommandAndSync::get_frame_objects( uint32 const frame_index )
 auto VulkanCommandAndSync::get_present_semaphore( FrameInfo const& frame )
     -> utils::Result< vk::Semaphore >
 {
+    // The swapchain may have been rebuilt with more images than originally expected.
+    LTB_CHECK_VALID( std::numeric_limits< uint32 >::max( ) != frame.image_index );
+    while ( image_semaphores_.size( ) <= frame.image_index )
+    {
+        LTB_CHECK( image_semaphores_.emplace_back( gpu_.device( ) ).initialize( ) );
+    }
     LTB_CHECK_VALID( frame.image_index < image_semaphores_.size( ) );
 
     return image_semaphores_[ frame.image_index ].get( );
@@ -241,6 +243,10 @@ auto VulkanCommandAndSync::end_frame(
                                  .setWaitDstStageMask( wait_stages )
                                  .setSignalSemaphores( signal_when_finished )
                                  .setCommandBuffers( frame.command_buffer );
+
+    // Reset right before submitting so an early error return can't leave an unsignaled fence.
+    auto const fences = std::array{ frame.frame_fence };
+    VK_CHECK( gpu_.device( ).get( ).resetFences( fences ) );
 
     VK_CHECK( submit_queue.submit( submit_info, frame.frame_fence ) );
 

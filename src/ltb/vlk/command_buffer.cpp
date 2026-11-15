@@ -36,7 +36,7 @@ auto CommandBuffer::initialize( CommandBufferSettings const settings ) -> utils:
 
     auto const command_buffer_info = vk::CommandBufferAllocateInfo{ }
                                          .setCommandPool( command_pool_.get( ) )
-                                         .setLevel( settings_.level )
+                                         .setLevel( settings.level )
                                          .setCommandBufferCount( 1U );
     VK_CHECK(
         auto command_buffers,

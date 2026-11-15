@@ -61,23 +61,37 @@ auto GlfwWindow::is_initialized( ) const -> bool
 
 auto GlfwWindow::should_close( ) const -> bool
 {
+    if ( !is_initialized( ) )
+    {
+        return true;
+    }
     return ::glfwWindowShouldClose( window_.get( ) );
 }
 
 auto GlfwWindow::resized( ) const -> std::optional< glm::ivec2 >
 {
+    if ( !is_initialized( ) )
+    {
+        return std::nullopt;
+    }
     return callback_data_->resized_framebuffer;
 }
 
 auto GlfwWindow::reset_callback_data( ) const -> void
 {
-    callback_data_->resized_framebuffer = std::nullopt;
+    if ( is_initialized( ) )
+    {
+        callback_data_->resized_framebuffer = std::nullopt;
+    }
 }
 
 auto GlfwWindow::framebuffer_size( ) const -> glm::ivec2
 {
     auto size = glm::ivec2{ 0, 0 };
-    ::glfwGetFramebufferSize( window_.get( ), &size.x, &size.y );
+    if ( is_initialized( ) )
+    {
+        ::glfwGetFramebufferSize( window_.get( ), &size.x, &size.y );
+    }
     return size;
 }
 

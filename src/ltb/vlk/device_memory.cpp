@@ -25,13 +25,20 @@ struct AppendMemoryRange
 
     auto operator( )( vk::MemoryRequirements const& mem_req ) const -> MemoryRange
     {
-        auto const range = MemoryRange{ .size = mem_req.size, .offset = total_size };
+        // Each resource must be aligned to its own requirement.
+        auto offset = total_size;
+        if ( 0U != mem_req.alignment )
+        {
+            auto const alignment_remainder = offset % mem_req.alignment;
+            if ( 0U != alignment_remainder )
+            {
+                offset += mem_req.alignment - alignment_remainder;
+            }
+        }
 
-        total_size += mem_req.size;
-        auto const alignment_remainder = total_size % mem_req.alignment;
-        total_size += mem_req.alignment - alignment_remainder;
+        total_size = offset + mem_req.size;
 
-        return range;
+        return MemoryRange{ .size = mem_req.size, .offset = offset };
     }
 };
 

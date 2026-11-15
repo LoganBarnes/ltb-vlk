@@ -34,22 +34,27 @@ struct TransformToMat
     }
 };
 
+struct MultiplyByTransform
+{
+    template < typename Matrix, typename Transform >
+    auto operator( )( Matrix const& accumulated, Transform const& transform ) const -> Matrix
+    {
+        return accumulated * TransformToMat{ }( transform );
+    }
+};
+
 template < glm::length_t Dimensions, typename Transform >
     requires DimensionsMatchTransform< Dimensions, Transform >
 auto consolidate_transforms_impl( std::vector< Transform > const& transforms )
 {
     using Matrix = Mat< Dimensions + 1 >;
 
-    constexpr auto initial_value       = glm::identity< Matrix >( );
-    constexpr auto transform_operation = TransformToMat{ };
-    constexpr auto reduce_operation    = std::multiplies< Matrix >{ };
-
-    return std::transform_reduce(
+    // Matrix multiplication isn't commutative, so std::transform_reduce can't be used.
+    return std::accumulate(
         transforms.rbegin( ),
         transforms.rend( ),
-        initial_value,
-        reduce_operation,
-        transform_operation
+        glm::identity< Matrix >( ),
+        MultiplyByTransform{ }
     );
 }
 
