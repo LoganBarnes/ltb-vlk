@@ -24,6 +24,10 @@ struct SwapchainSettings
     std::vector< vk::SurfaceFormatKHR > preferred_surface_formats = {
         { vk::Format::eB8G8R8A8Unorm, vk::ColorSpaceKHR::eSrgbNonlinear },
     };
+
+    /// \brief How the swapchain images will be used. Add `eTransferSrc`
+    ///        to allow rendered images to be copied (e.g. screenshots).
+    vk::ImageUsageFlags image_usage = vk::ImageUsageFlagBits::eColorAttachment;
 };
 
 enum class Reinitialize

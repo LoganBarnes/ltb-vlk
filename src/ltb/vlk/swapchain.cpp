@@ -121,7 +121,7 @@ auto Swapchain::initialize( SwapchainSettings settings, Reinitialize const reini
     auto const create_info = vk::SwapchainCreateInfoKHR{ }
                                  .setSurface( surface_.get( ) )
                                  .setImageArrayLayers( 1U )
-                                 .setImageUsage( vk::ImageUsageFlagBits::eColorAttachment )
+                                 .setImageUsage( settings.image_usage )
                                  .setCompositeAlpha( vk::CompositeAlphaFlagBitsKHR::eOpaque )
                                  .setClipped( true )
                                  .setImageFormat( surface_format.format )

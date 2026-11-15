@@ -195,6 +195,15 @@ if( imgui_ADDED )
     Vulkan::Vulkan
     glfw::glfw
   )
+  # The GLFW backend calls X11 directly on Linux (ImGui_ImplGlfw_SetWindowFloating).
+  if( UNIX AND NOT APPLE )
+    find_package( X11 REQUIRED )
+    target_link_libraries(
+      imgui
+      PUBLIC
+      X11::X11
+    )
+  endif()
   target_include_directories(
     imgui
     SYSTEM
