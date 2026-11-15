@@ -45,12 +45,13 @@ cpmaddpackage(
   GIT_REPOSITORY
   https://github.com/glfw/glfw.git
   GIT_TAG
-  3.3.10
+  3.5.1
   OPTIONS
   "GLFW_BUILD_TESTS OFF"
   "GLFW_BUILD_EXAMPLES OFF"
   "GLFW_BUILD_DOCS OFF"
   "GLFW_INSTALL OFF"
+  "GLFW_BUILD_WAYLAND OFF"
 )
 cpmaddpackage(
   NAME
