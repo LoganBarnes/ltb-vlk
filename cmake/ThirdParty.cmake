@@ -45,12 +45,13 @@ cpmaddpackage(
   GIT_REPOSITORY
   https://github.com/glfw/glfw.git
   GIT_TAG
-  3.3.10
+  3.5.1
   OPTIONS
   "GLFW_BUILD_TESTS OFF"
   "GLFW_BUILD_EXAMPLES OFF"
   "GLFW_BUILD_DOCS OFF"
   "GLFW_INSTALL OFF"
+  "GLFW_BUILD_WAYLAND OFF"
 )
 cpmaddpackage(
   NAME
@@ -194,6 +195,15 @@ if( imgui_ADDED )
     Vulkan::Vulkan
     glfw::glfw
   )
+  # The GLFW backend calls X11 directly on Linux (ImGui_ImplGlfw_SetWindowFloating).
+  if( UNIX AND NOT APPLE )
+    find_package( X11 REQUIRED )
+    target_link_libraries(
+      imgui
+      PUBLIC
+      X11::X11
+    )
+  endif()
   target_include_directories(
     imgui
     SYSTEM

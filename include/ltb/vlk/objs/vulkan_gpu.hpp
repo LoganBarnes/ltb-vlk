@@ -25,6 +25,10 @@ struct VulkanGpuSettings
 class VulkanGpu
 {
 public:
+    /// \brief A GPU with no window or surface (compute and offscreen rendering only).
+    VulkanGpu( );
+
+    /// \brief A GPU capable of presenting to the given window.
     VulkanGpu( window::GlfwContext& glfw_context, window::GlfwWindow& glfw_window );
 
     auto initialize( VulkanGpuSettings settings ) -> utils::Result< void >;
@@ -36,6 +40,11 @@ public:
     auto instance( ) const -> Instance const&;
     auto instance( ) -> Instance&;
 
+    /// \brief False if this GPU was created without a window.
+    [[nodiscard( "Const getter" )]]
+    auto has_surface( ) const -> bool;
+
+    /// \brief The window's surface. Only valid if `has_surface()` is true.
     [[nodiscard( "Const getter" )]]
     auto surface( ) const -> Surface const&;
     auto surface( ) -> Surface&;
@@ -53,13 +62,13 @@ public:
     auto descriptor_pool( ) -> DescriptorPool&;
 
 private:
-    window::GlfwContext& glfw_context_;
-    window::GlfwWindow&  glfw_window_;
+    window::GlfwContext* glfw_context_ = nullptr;
+    window::GlfwWindow*  glfw_window_  = nullptr;
 
-    Instance       instance_        = { };
-    Surface        surface_         = { glfw_window_, instance_ };
-    PhysicalDevice physical_device_ = { instance_ };
-    Device         device_          = { physical_device_ };
+    Instance                 instance_        = { };
+    std::optional< Surface > surface_         = std::nullopt;
+    PhysicalDevice           physical_device_ = { instance_ };
+    Device                   device_          = { physical_device_ };
 
     DescriptorPool descriptor_pool_ = { device_ };
 

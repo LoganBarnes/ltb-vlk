@@ -81,7 +81,13 @@ auto GraphicsPipeline::initialize( GraphicsPipelineSettings settings ) -> utils:
                 vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
                 | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA
             )
-            .setBlendEnable( false ),
+            .setBlendEnable( settings.alpha_blending )
+            .setSrcColorBlendFactor( vk::BlendFactor::eSrcAlpha )
+            .setDstColorBlendFactor( vk::BlendFactor::eOneMinusSrcAlpha )
+            .setColorBlendOp( vk::BlendOp::eAdd )
+            .setSrcAlphaBlendFactor( vk::BlendFactor::eOne )
+            .setDstAlphaBlendFactor( vk::BlendFactor::eOneMinusSrcAlpha )
+            .setAlphaBlendOp( vk::BlendOp::eAdd ),
     };
 
     auto const color_blending = vk::PipelineColorBlendStateCreateInfo{ }

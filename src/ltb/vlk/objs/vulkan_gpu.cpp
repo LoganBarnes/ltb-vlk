@@ -15,10 +15,13 @@
 namespace ltb::vlk::objs
 {
 
+VulkanGpu::VulkanGpu( ) = default;
+
 VulkanGpu::VulkanGpu( window::GlfwContext& glfw_context, window::GlfwWindow& glfw_window )
-    : glfw_context_( glfw_context )
-    , glfw_window_( glfw_window )
+    : glfw_context_( &glfw_context )
+    , glfw_window_( &glfw_window )
 {
+    surface_.emplace( glfw_window, instance_ );
 }
 
 auto VulkanGpu::initialize( VulkanGpuSettings settings ) -> utils::Result< void >
@@ -27,12 +30,30 @@ auto VulkanGpu::initialize( VulkanGpuSettings settings ) -> utils::Result< void 
     {
         return utils::success( );
     }
-    LTB_CHECK_VALID( glfw_context_.is_initialized( ) );
-    LTB_CHECK_VALID( glfw_window_.is_initialized( ) );
 
-    LTB_CHECK( instance_.initialize( std::move( settings.instance ), &glfw_context_ ) );
-    LTB_CHECK( surface_.initialize( ) );
-    LTB_CHECK( physical_device_.initialize( std::move( settings.device ), &surface_ ) );
+    if ( this->has_surface( ) )
+    {
+        LTB_CHECK_VALID( glfw_context_->is_initialized( ) );
+        LTB_CHECK_VALID( glfw_window_->is_initialized( ) );
+
+        LTB_CHECK( instance_.initialize( std::move( settings.instance ), glfw_context_ ) );
+        LTB_CHECK( surface_->initialize( ) );
+        LTB_CHECK( physical_device_.initialize( std::move( settings.device ), &surface_.value( ) ) );
+    }
+    else
+    {
+        // Presentation extensions require a surface so they can't be enabled without one.
+        auto const is_presentation_extension = []( char const* const extension ) {
+            auto const name = std::string_view{ extension };
+            return ( name == VK_KHR_SWAPCHAIN_EXTENSION_NAME )
+                || ( name == VK_KHR_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME );
+        };
+        std::erase_if( settings.device.extensions, is_presentation_extension );
+        std::erase_if( settings.device.optional_extensions, is_presentation_extension );
+
+        LTB_CHECK( instance_.initialize( std::move( settings.instance ), nullptr ) );
+        LTB_CHECK( physical_device_.initialize( std::move( settings.device ), nullptr ) );
+    }
     LTB_CHECK( device_.initialize( ) );
     LTB_CHECK( descriptor_pool_.initialize( std::move( settings.descriptor_pool ) ) );
 
@@ -56,14 +77,19 @@ auto VulkanGpu::instance( ) -> Instance&
     return instance_;
 }
 
+auto VulkanGpu::has_surface( ) const -> bool
+{
+    return surface_.has_value( );
+}
+
 auto VulkanGpu::surface( ) const -> Surface const&
 {
-    return surface_;
+    return surface_.value( );
 }
 
 auto VulkanGpu::surface( ) -> Surface&
 {
-    return surface_;
+    return surface_.value( );
 }
 
 auto VulkanGpu::physical_device( ) const -> PhysicalDevice const&

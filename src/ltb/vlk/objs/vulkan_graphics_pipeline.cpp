@@ -88,13 +88,13 @@ auto VulkanGraphicsPipeline::bind( vk::CommandBuffer const& command_buffer ) -> 
 
 auto VulkanGraphicsPipeline::bind_descriptor_sets( FrameInfo const& frame ) -> utils::Result< void >
 {
+    auto first_set = 0U;
     for ( auto& descriptor_sets : descriptor_sets_ )
     {
         auto const descriptors = descriptor_sets.get( );
         LTB_CHECK_VALID( frame.frame_index < descriptors.size( ) );
 
         constexpr auto bind_point = vk::PipelineBindPoint::eGraphics;
-        constexpr auto first_set  = 0U;
         frame.command_buffer.bindDescriptorSets(
             bind_point,
             pipeline_layout_.get( ),
@@ -102,6 +102,7 @@ auto VulkanGraphicsPipeline::bind_descriptor_sets( FrameInfo const& frame ) -> u
             descriptors[ frame.frame_index ],
             { }
         );
+        ++first_set;
     }
 
     return utils::success( );

@@ -102,6 +102,12 @@ target_include_directories(
   $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
   $<BUILD_INTERFACE:${LTB_VLK_GENERATED_DIR}>
 )
+target_include_directories(
+  LtbVlk
+  SYSTEM
+  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/external/include>
+)
 target_compile_features(
   LtbVlk
   PUBLIC
@@ -170,5 +176,33 @@ endif ()
 # Applications
 # ##############################################################################
 if (LTB_VLK_BUILD_EXAMPLES)
+
+  find_package(
+    OpenGL
+    REQUIRED
+  )
+
+  # Library allowing OpenGL functions to be loaded at runtime.
+  add_library(
+    ltb_ogl_loader
+    ${CMAKE_CURRENT_LIST_DIR}/external/src/GL/gl3w.c
+  )
+  add_library(
+    ltb_ogl::loader
+    ALIAS
+    ltb_ogl_loader
+  )
+  target_link_libraries(
+    ltb_ogl_loader
+    PUBLIC
+    OpenGL::GL
+  )
+  target_include_directories(
+    ltb_ogl_loader
+    SYSTEM
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/external/include>
+  )
+
   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/src/ltb/apps)
 endif ()
