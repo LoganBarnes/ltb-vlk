@@ -4,7 +4,7 @@
 #pragma once
 
 // project
-#include "ltb/display/mesh_display_settings.hpp"
+#include "ltb/display/display_modes.hpp"
 
 // external
 #include <glm/glm.hpp>
@@ -16,7 +16,7 @@ struct DisplayUniforms
 {
     alignas( 16 ) glm::vec4 color         = glm::vec4( 1.f );
     alignas( 4 ) ColorMode color_mode     = ColorMode::UniformColor;
-    alignas( 4 ) ShadingMode shading_mode = ShadingMode::Flat;
+    alignas( 4 ) ShadingMode shading_mode = ShadingMode::None; // `shading_mode_flat` in GLSL
     // 8 bytes padding
 };
 

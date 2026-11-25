@@ -55,10 +55,14 @@ public:
 
     T value = { };
 
-    /// \brief Loads the JSON settings from disk, if the path exist.
+    /// \brief Loads the JSON settings from disk, if the path exist. Leaves `value`
+    ///        unchanged (and logs a warning) if the file isn't valid JSON or the settings
+    ///        don't match `T`.
     auto load_settings( std::filesystem::path optional_path_override = { } ) -> void;
 
-    /// \brief Saves the settings to disk as JSON.
+    /// \brief Saves the settings to disk as JSON, keeping any other entries in the file.
+    ///        Does not overwrite (and logs a warning) if the existing file isn't a valid
+    ///        JSON object, so a hand-edited file with a typo isn't lost.
     auto save_settings( std::filesystem::path optional_path_override = { } ) -> void;
 
 private:
@@ -105,10 +109,17 @@ JsonSettings< T >::~JsonSettings( )
 {
     if ( deletion_counter_.use_count( ) == 1 )
     {
-        // Save on destruction
+        // Save on destruction. Destructors must not throw, so log any failure instead.
         if ( !has_flag( flags_, JsonSettingsFlag::NoImplicitSave ) )
         {
-            save_settings( );
+            try
+            {
+                save_settings( );
+            }
+            catch ( std::exception const& e )
+            {
+                spdlog::error( "Failed to save JSON '{}' to '{}': {}", name_, file_.string( ), e.what( ) );
+            }
         }
     }
 }
@@ -148,16 +159,32 @@ auto JsonSettings< T >::load_settings( std::filesystem::path optional_path_overr
 
     if ( std::filesystem::exists( path ) )
     {
-        auto json = nlohmann::json{ };
+        auto file = std::ifstream( path );
+
+        constexpr auto no_callback      = nullptr;
+        constexpr auto allow_exceptions = false;
+        auto const json = nlohmann::json::parse( file, no_callback, allow_exceptions );
+
+        if ( json.is_discarded( ) )
         {
-            // read a JSON file
-            auto file = std::ifstream( path );
-            file >> json;
+            spdlog::warn( "JSON '{}' not loaded. Invalid JSON in '{}'", name_, path.string( ) );
+            return;
         }
 
-        if ( json.contains( name_ ) )
+        if ( json.is_object( ) && json.contains( name_ ) )
         {
-            json.at( name_ ).get_to( value );
+            // Parse into a copy so a partial failure doesn't leave `value` half-updated.
+            try
+            {
+                auto loaded = value;
+                json.at( name_ ).get_to( loaded );
+                value = std::move( loaded );
+            }
+            catch ( nlohmann::json::exception const& e )
+            {
+                spdlog::warn( "JSON '{}' not loaded from '{}': {}", name_, path.string( ), e.what( ) );
+                return;
+            }
         }
 
         if ( has_flag( flags_, JsonSettingsFlag::PrintDebugMessages ) )
@@ -180,13 +207,26 @@ auto JsonSettings< T >::save_settings( std::filesystem::path optional_path_overr
         path = file_;
     }
 
-    auto json = nlohmann::json{ };
+    auto json = nlohmann::json::object( );
 
     if ( std::filesystem::exists( path ) )
     {
-        // read a JSON file
+        // Keep any other settings stored in the same file.
         auto file = std::ifstream( path );
-        file >> json;
+
+        constexpr auto no_callback      = nullptr;
+        constexpr auto allow_exceptions = false;
+        json = nlohmann::json::parse( file, no_callback, allow_exceptions );
+
+        if ( json.is_discarded( ) || !json.is_object( ) )
+        {
+            spdlog::warn(
+                "JSON '{}' not saved. '{}' exists but is not a JSON object",
+                name_,
+                path.string( )
+            );
+            return;
+        }
     }
 
     json[ name_ ] = value;

@@ -6,6 +6,10 @@
 // project
 #include "ltb/geom/fwd.hpp"
 
+// standard
+#include <numeric>
+#include <type_traits>
+
 namespace ltb::geom
 {
 
@@ -25,9 +29,16 @@ constexpr auto dimensions( Range< T > const& range )
 template < typename T >
 constexpr auto center( Range< T > const& range )
 {
-    // Find the center in a way that avoids overflow.
-    constexpr auto two = T( 2 );
-    return ( range.min / two ) + ( range.max / two );
+    if constexpr ( std::is_arithmetic_v< T > )
+    {
+        // Avoids overflow, and rounds towards `min` for integers.
+        return std::midpoint( range.min, range.max );
+    }
+    else
+    {
+        // Vector types (e.g. glm::vec2, glm::ivec2).
+        return range.min + ( ( range.max - range.min ) / typename T::value_type( 2 ) );
+    }
 }
 
 template < glm::length_t L, typename T >

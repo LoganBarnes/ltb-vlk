@@ -280,7 +280,7 @@ constexpr auto all_flags( ) -> Flags< E >
 template < typename E >
 struct HasFlag
 {
-    Flags< E >& flags;
+    Flags< E > flags;
 
     constexpr auto operator( )( E flag ) const -> bool
     {

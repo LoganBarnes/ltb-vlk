@@ -109,6 +109,11 @@ auto ObjsApp::frame_update( exec::UpdateLoopStatus const& status ) -> exec::Upda
     if ( auto result = this->render( ); !result )
     {
         spdlog::error( "ObjsApp::render() failed: {}", result.error( ).debug_error_message( ) );
+
+        // Stop instead of failing (and logging) every frame.
+        auto requests             = status.requests;
+        requests.exit_update_loop = true;
+        return requests;
     }
 
     return status.requests;

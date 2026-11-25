@@ -37,4 +37,14 @@ ScopedId::~ScopedId( )
     ImGui::PopID( );
 }
 
+ScopedDisable::ScopedDisable( bool const disable )
+{
+    ImGui::BeginDisabled( disable );
+}
+
+ScopedDisable::~ScopedDisable( )
+{
+    ImGui::EndDisabled( );
+}
+
 } // namespace ltb::gui

@@ -200,6 +200,11 @@ auto ApiApp::frame_update( exec::UpdateLoopStatus const& status ) -> exec::Updat
     if ( auto result = this->render( ); !result )
     {
         spdlog::error( "ApiApp::render() failed: {}", result.error( ).debug_error_message( ) );
+
+        // Stop instead of failing (and logging) every frame.
+        auto requests             = status.requests;
+        requests.exit_update_loop = true;
+        return requests;
     }
 
     return status.requests;

@@ -52,29 +52,33 @@ class [[nodiscard]] expected;
     )
 
 // Do not use this macro directly; use LTB_CHECK_VALID_OR instead.
-#define DETAIL_LTB_CHECK_VALID_OR( var, callback )                                                 \
+#define DETAIL_LTB_CHECK_VALID_OR1( var, callback )                                                \
     do                                                                                             \
     {                                                                                              \
         if ( !( var ) )                                                                            \
         {                                                                                          \
-            callback( LTB_MAKE_ERROR( "{} invalid", #var ) );                                      \
+            return callback( LTB_MAKE_ERROR( "{} invalid", #var ) );                               \
         }                                                                                          \
     } while ( false )
 
 // Do not use this macro directly; use LTB_CHECK_VALID_OR instead.
-#define DETAIL_LTB_CHECK_VALID_OR( var, callback )                                                 \
+#define DETAIL_LTB_CHECK_VALID_OR2( var, msg, callback )                                           \
     do                                                                                             \
     {                                                                                              \
         if ( !( var ) )                                                                            \
         {                                                                                          \
-            callback( LTB_MAKE_ERROR( "{} invalid", #var ) );                                      \
+            return callback( LTB_MAKE_ERROR( "{} invalid: {}", #var, msg ) );                      \
         }                                                                                          \
     } while ( false )
 
-/// \brief Checks if the inputs expression is valid,
-///        otherwise calls the provided error callback.
+/// \brief Checks if the input expression is valid, otherwise returns
+///        `callback( error )` from the enclosing function.
+///
+/// The callback's return type must match the enclosing function's (`void` is fine), e.g.
+/// `LTB_CHECK_VALID_OR( ptr, log_error )` in a `void` function, or
+/// `LTB_CHECK_VALID_OR( ptr, "need a pointer", []( auto const& ) { return -1; } )`.
 #define LTB_CHECK_VALID_OR( ... )                                                                  \
-    LTB_EXPAND( LTB_GET2( __VA_ARGS__, DETAIL_LTB_CHECK_VALID_OR2, DETAIL_LTB_CHECK_VALID_OR1, )(  \
+    LTB_EXPAND( LTB_GET3( __VA_ARGS__, DETAIL_LTB_CHECK_VALID_OR2, DETAIL_LTB_CHECK_VALID_OR1, )(  \
         __VA_ARGS__                                                                                \
     ) )
 
@@ -105,27 +109,31 @@ class [[nodiscard]] expected;
         __VA_ARGS__                                                                                \
     ) )
 
-// Do not use this macro directly; use LTB_CHECK_OF instead.
+// Do not use this macro directly; use LTB_CHECK_OR instead.
 #define DETAIL_LTB_CHECK_OR1( unique_name, func, callback )                                        \
     do                                                                                             \
     {                                                                                              \
         if ( auto unique_name = to_void( func ); /* check for error -> */ !unique_name )           \
         {                                                                                          \
-            callback( unique_name.error( ) );                                                      \
+            return callback( unique_name.error( ) );                                               \
         }                                                                                          \
     } while ( false )
 
-// Do not use this macro directly; use LTB_CHECK_OF instead.
+// Do not use this macro directly; use LTB_CHECK_OR instead.
 #define DETAIL_LTB_CHECK_OR2( unique_name, var, func, callback )                                   \
     auto&& unique_name = ( func );                                                                 \
     if ( !unique_name )                                                                            \
     {                                                                                              \
-        callback( unique_name.error( ) );                                                          \
+        return callback( unique_name.error( ) );                                                   \
     }                                                                                              \
     var = std::move( unique_name.value( ) )
 
-/// \brief An "overloaded" macro that is replaced by LTB_CHECK_OR1
-///        or LTB_CHECK_OR2 depending on the number of arguments.
+/// \brief Like LTB_CHECK, but on error returns `callback( error )` from the enclosing
+///        function instead of the error itself. Use it where the enclosing function
+///        doesn't return a `Result` (e.g. log the error and return a default value).
+///
+///     LTB_CHECK_OR( func( ), callback );            // Ignores func's value.
+///     LTB_CHECK_OR( auto value, func( ), callback ); // Declares `value` on success.
 #define LTB_CHECK_OR( ... )                                                                        \
     LTB_EXPAND( LTB_GET3( __VA_ARGS__, DETAIL_LTB_CHECK_OR2, DETAIL_LTB_CHECK_OR1, )(              \
         LTB_UNIQUE_NAME( ltb_check_macro_result ),                                                 \

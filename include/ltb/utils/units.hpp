@@ -181,7 +181,9 @@ T constexpr us_from_ms( T ms )
 template < typename T >
 T constexpr decimal_from_percentage( T percentage )
 {
-    return static_cast< T >( constants::decimal_from_percentage ) * percentage;
+    return static_cast< T >(
+        constants::decimal_from_percentage * static_cast< double >( percentage )
+    );
 }
 
 template < typename T >
@@ -220,37 +222,35 @@ T constexpr bytes_from_bits( T bits )
 template < typename In, typename Out = In >
 auto constexpr c_from_f( In const fahrenheit )
 {
-    return ( static_cast< Out >( fahrenheit ) - static_cast< Out >( 32.0 ) )
-         * static_cast< Out >( 5.0 / 9.0 );
+    return static_cast< Out >( ( static_cast< double >( fahrenheit ) - 32.0 ) * ( 5.0 / 9.0 ) );
 }
 
 /// \brief Converts celsius to fahrenheit.
 template < typename In, typename Out = In >
 auto constexpr f_from_c( In const celsius )
 {
-    return ( static_cast< Out >( celsius ) * static_cast< Out >( 9.0 / 5.0 ) )
-         + static_cast< Out >( 32.0 );
+    return static_cast< Out >( ( static_cast< double >( celsius ) * ( 9.0 / 5.0 ) ) + 32.0 );
 }
 
 /// \brief Converts kelvin to celsius
 template < typename In, typename Out = In >
 auto constexpr c_from_k( In const kelvin )
 {
-    return static_cast< Out >( kelvin ) - static_cast< Out >( 273.15 );
+    return static_cast< Out >( static_cast< double >( kelvin ) + constants::celsius_at_zero_kelvin );
 }
 
 /// \brief Converts celsius to kelvin
 template < typename In, typename Out = In >
 auto constexpr k_from_c( In const celsius )
 {
-    return static_cast< Out >( celsius ) + static_cast< Out >( 273.15 );
+    return static_cast< Out >( static_cast< double >( celsius ) - constants::celsius_at_zero_kelvin );
 }
 
 /// \brief Converts millidegrees Celsius to degrees Celsius.
 template < typename In, typename Out = In >
 auto constexpr c_from_milli_c( In const milli_celsius )
 {
-    return static_cast< Out >( milli_celsius ) / static_cast< Out >( 1000.0 );
+    return static_cast< Out >( static_cast< double >( milli_celsius ) / 1000.0 );
 }
 
 } // namespace utils

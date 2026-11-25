@@ -9,6 +9,8 @@
 #include "ltb/window/glfw_window.hpp"
 
 // external
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
@@ -56,7 +58,12 @@ auto ImguiGlfwVulkanSetup::initialize( ) -> utils::Result< void >
 
     if ( dpi_handling_ == DpiFontHandling::Scale )
     {
-        io.ConfigFlags |= ::ImGuiConfigFlags_DpiEnableScaleFonts;
+        // Scale fonts by the window's current content scale, and keep them scaled if the
+        // window moves to a monitor with a different DPI.
+        auto content_scale = glm::vec2( 1.0F );
+        ::glfwGetWindowContentScale( glfw_window_.get( ), &content_scale.x, &content_scale.y );
+        ImGui::GetStyle( ).FontScaleDpi = content_scale.x;
+        io.ConfigDpiScaleFonts          = true;
     }
 
     // No more errors will happen. Store all the initialized objects.

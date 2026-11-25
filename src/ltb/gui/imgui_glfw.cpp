@@ -10,7 +10,7 @@ namespace ltb::gui
 {
 
 ScopedImguiGlfw::ScopedImguiGlfw( GLFWwindow* const window )
-    : init_value{ ImGui_ImplGlfw_InitForOpenGL( window, true ) }
+    : init_value{ ImGui_ImplGlfw_InitForVulkan( window, true ) }
 {
 }
 
@@ -28,7 +28,7 @@ auto initialize_imgui_glfw( GLFWwindow* const window ) -> utils::Result< ImguiGl
     {
         return imgui_glfw;
     }
-    return LTB_MAKE_UNEXPECTED_ERROR( "ImGui_ImplGlfw_InitForOpenGL() failed" );
+    return LTB_MAKE_UNEXPECTED_ERROR( "ImGui_ImplGlfw_InitForVulkan() failed" );
 }
 
 } // namespace ltb::gui

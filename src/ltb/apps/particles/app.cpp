@@ -89,6 +89,11 @@ auto ParticlesApp::frame_update( exec::UpdateLoopStatus const& status ) -> exec:
             "{}",
             result.error( ).debug_error_message( )
         );
+
+        // Stop instead of failing (and logging) every frame.
+        auto requests             = status.requests;
+        requests.exit_update_loop = true;
+        return requests;
     }
 
     imgui_.new_frame( );
@@ -101,6 +106,11 @@ auto ParticlesApp::frame_update( exec::UpdateLoopStatus const& status ) -> exec:
             "{}",
             result.error( ).debug_error_message( )
         );
+
+        // Stop instead of failing (and logging) every frame.
+        auto requests             = status.requests;
+        requests.exit_update_loop = true;
+        return requests;
     }
 
     return status.requests;
