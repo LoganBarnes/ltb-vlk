@@ -130,7 +130,7 @@ auto ShareDisplay::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
     );
     LTB_CHECK( gpu_.initialize( std::move( gpu_settings ) ) );
     spdlog::
-        info( "Displaying on {}", std::string{ gpu_.physical_device( ).properties( ).deviceName } );
+        info( "Displaying on {}", std::string( gpu_.physical_device( ).properties( ).deviceName.data( ) ) );
 
     auto const& queues = gpu_.device( ).queues( );
     LTB_CHECK_VALID( queues.contains( vlk::QueueType::Graphics ) );

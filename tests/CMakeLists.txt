@@ -36,6 +36,12 @@ function(ltb_vlk_add_test_suite directory label)
     PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/${directory}
   )
+  target_compile_definitions(
+    ${target}
+    PRIVATE
+    # Tests read env vars with std::getenv, which MSVC deprecates.
+    $<$<PLATFORM_ID:Windows>:_CRT_SECURE_NO_WARNINGS>
+  )
   gtest_discover_tests(
     ${target}
     PROPERTIES

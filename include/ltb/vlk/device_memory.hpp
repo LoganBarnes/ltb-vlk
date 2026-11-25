@@ -32,6 +32,10 @@ struct DeviceMemorySettings
     ///        exported or imported image memory, and both sides must agree, so it's
     ///        simplest to always set it when sharing image memory.
     vk::Image dedicated_image = nullptr;
+
+    /// \brief Extra structs to chain onto `vk::MemoryAllocateInfo`, for platform-specific
+    ///        options without a setting here (e.g. `vk::ImportMemoryWin32HandleInfoKHR`).
+    void const* p_next = nullptr;
 };
 
 struct MemoryRange
