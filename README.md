@@ -85,7 +85,7 @@ socket (`SCM_RIGHTS`), and the display imports the memory and draws every produc
 The app only uses two platform-neutral library interfaces, so supporting another platform
 means adding a backend for each, without changing the app:
 
-| Interface | What it does | Linux backend | Windows (planned) | macOS (planned) |
+| Interface | What it does | Linux backend | Windows backend | macOS (planned) |
 |:--|:--|:--|:--|:--|
 | `vlk::SharedImage` (`ltb/vlk/shared_image.hpp`) | Create, export and import images with shared memory | Opaque fds (`VK_KHR_external_memory_fd`) | NT handles (`VK_KHR_external_memory_win32`) | IOSurfaces (`VK_EXT_metal_objects`) |
 | `ipc::Channel` (`ltb/ipc/channel.hpp`) | Send messages and native handles between processes | Unix socket + `SCM_RIGHTS` | Named pipe + `DuplicateHandle` | Mach messages / XPC |

@@ -10,10 +10,9 @@ Where things stand after the November 2026 code review, and what's left to do.
 
 | Branch | State |
 |:--|:--|
-| `main` | All high-, medium- and low-severity review fixes, 66 tests, GitHub Actions CI (GCC 14 + Clang 18 on lavapipe), and `share-app` with platform-neutral `SharedImage`/`Channel` interfaces (Linux backends). |
-| `windows-backend` | Windows backends for `Channel` and `SharedImage`. **Written on Linux, never built or run on Windows.** Linux still builds and passes all tests on this branch. |
+| `main` | All high-, medium- and low-severity review fixes, GitHub Actions CI (GCC 14 + Clang 18 on lavapipe), and `share-app` with platform-neutral `SharedImage`/`Channel` interfaces and Linux and Windows backends. The Windows backends were built (MSVC 14.52, strict flags) and tested on Windows on 25 Nov 2026 (`windows-backend` merged at `352c491`). |
 
-## 1. Windows backend (`windows-backend` branch)
+## 1. Windows backend (merged)
 
 ### What's there
 
@@ -29,20 +28,31 @@ CMake picks `src/ltb/ipc/<platform>/` automatically, `LTB_IPC_SUPPORTED` (in
 Linux and Windows. The `Channel` and `SharedImage` tests are platform-neutral; on Windows
 the `Channel` test sends an event handle and checks the received copy is the same event.
 
-### To finish it
+### Status
 
-1. Build on Windows. **Start with `LTB_VLK_USE_STRICT_FLAGS=OFF`.** The library has likely
-   never been built with MSVC, so unrelated code may fail with `/W4 /WX` first.
-2. Run the unit tests (`ctest -L unit`), especially `ChannelTest.*`. They exercise the
-   named-pipe backend for real, no GPU needed.
-3. Run the GPU tests (`ctest -L gpu`), especially `SharedImageTest.*`.
-4. Run `share-app --display` and a few `share-app --share` in other terminals.
-5. Merge into `main`, then add a Windows job to CI (MSVC, install the Vulkan SDK, run the
-   unit tests). GitHub's Windows runners have no GPU, so GPU tests will skip there unless a
-   software driver such as Mesa's lavapipe for Windows is installed. Whether lavapipe on
-   Windows supports `VK_KHR_external_memory_win32` hasn't been checked.
+Built with MSVC 14.52 + Ninja and `LTB_VLK_USE_STRICT_FLAGS=ON`, then run on Windows 11
+with an NVIDIA RTX 4070 Ti:
 
-### Likely trouble spots
+- All unit tests (including `ChannelTest.*`) and GPU tests (including `SharedImageTest.*`,
+  with `LTB_VLK_REQUIRE_GPU=1`) pass.
+- `share-app --display` with several `--share` producers shows every producer's tile.
+  Producers can leave and join, a second display fails with a clear error, and a producer
+  without a display explains how to start one.
+
+Building took three small fixes: logging `deviceName` with `.data( )` (MSVC rejects
+brace-initializing `std::string` from `vk::ArrayWrapper1D`), defining
+`ChannelListener`'s default constructor out of line on Windows, and
+`_CRT_SECURE_NO_WARNINGS` for the test targets.
+
+### Still to do
+
+1. Check Ctrl+C shuts `share-app` down cleanly on Windows (only forced kills were tested).
+2. Add a Windows job to CI (MSVC, install the Vulkan SDK, run the unit tests). GitHub's
+   Windows runners have no GPU, so GPU tests will skip there unless a software driver such
+   as Mesa's lavapipe for Windows is installed. Whether lavapipe on Windows supports
+   `VK_KHR_external_memory_win32` hasn't been checked.
+
+### Things to watch
 
 - `PeekNamedPipe` / `GetOverlappedResult` / `ConnectNamedPipe` details in `channel.cpp`.
   They follow the documentation but are the most likely to surprise.
