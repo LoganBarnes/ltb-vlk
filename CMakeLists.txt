@@ -23,6 +23,11 @@ option(
   "Build example applications"
   OFF
 )
+option(
+  LTB_VLK_BUILD_TESTS
+  "Build unit and GPU tests"
+  OFF
+)
 
 # ##############################################################################
 # CMake Package Manager
@@ -205,4 +210,12 @@ if (LTB_VLK_BUILD_EXAMPLES)
   )
 
   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/src/ltb/apps)
+endif ()
+
+# ##############################################################################
+# Tests
+# ##############################################################################
+if (LTB_VLK_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tests)
 endif ()

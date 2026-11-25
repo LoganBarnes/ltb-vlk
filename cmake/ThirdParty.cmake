@@ -79,6 +79,21 @@ cpmaddpackage(
 cpmaddpackage( "gh:Neargye/magic_enum@0.7.3" )
 cpmaddpackage( "gh:gabime/spdlog@1.17.0" )
 
+if( LTB_VLK_BUILD_TESTS )
+  cpmaddpackage(
+    NAME
+    googletest
+    GITHUB_REPOSITORY
+    google/googletest
+    GIT_TAG
+    v1.15.2
+    OPTIONS
+    "INSTALL_GTEST OFF"
+    "BUILD_GMOCK OFF"
+    "gtest_force_shared_crt ON"
+  )
+endif()
+
 if( cxxopts_ADDED )
   add_library(
     cxxopts
