@@ -419,6 +419,7 @@ ChannelListener::ChannelListener(
 {
 }
 
+ChannelListener::ChannelListener( )                                               = default;
 ChannelListener::~ChannelListener( )                                              = default;
 ChannelListener::ChannelListener( ChannelListener&& ) noexcept                    = default;
 auto ChannelListener::operator=( ChannelListener&& ) noexcept -> ChannelListener& = default;

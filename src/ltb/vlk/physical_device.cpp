@@ -151,7 +151,7 @@ auto PhysicalDevice::initialize( DeviceSettings settings, Surface const* const s
     unique_queue_families_ = queue_families_ | std::views::values | std::ranges::to< std::set >( );
 
     spdlog::
-        info( "Selected device {}", std::string{ physical_device_.getProperties( ).deviceName } );
+        info( "Selected device {}", std::string( physical_device_.getProperties( ).deviceName.data( ) ) );
 
     return utils::success( );
 }

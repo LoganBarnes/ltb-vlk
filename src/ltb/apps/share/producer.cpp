@@ -63,7 +63,7 @@ auto ShareProducer::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
         .device = { .extensions = vlk::shared_image_device_extensions( ) },
     } ) );
     spdlog::
-        info( "Rendering on {}", std::string{ gpu_.physical_device( ).properties( ).deviceName } );
+        info( "Rendering on {}", std::string( gpu_.physical_device( ).properties( ).deviceName.data( ) ) );
 
     LTB_CHECK_VALID( gpu_.device( ).queues( ).contains( vlk::QueueType::Graphics ) );
     graphics_queue_ = gpu_.device( ).queues( ).at( vlk::QueueType::Graphics );

@@ -105,7 +105,9 @@ public:
     ///        process is replaced, and the file is removed when the listener is destroyed.
     static auto listen( ChannelAddress const& address ) -> utils::Result< ChannelListener >;
 
+#if !defined( _WIN32 )
     ChannelListener( ) = default;
+#endif
 
     [[nodiscard( "Const getter" )]]
     auto is_valid( ) const -> bool;
@@ -114,7 +116,9 @@ public:
     auto accept( ) -> utils::Result< std::optional< Channel > >;
 
 #if defined( _WIN32 )
-    // Defined in the .cpp, where `PendingConnection` is complete.
+    // Defined in the .cpp, where `PendingConnection` is complete. MSVC instantiates the
+    // `unique_ptr` destructor in an inline default constructor too, so that is out of line.
+    ChannelListener( );
     ~ChannelListener( );
     ChannelListener( ChannelListener&& ) noexcept;
     auto operator=( ChannelListener&& ) noexcept -> ChannelListener&;

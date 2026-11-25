@@ -141,7 +141,7 @@ SuitablePhysicalDevice::SuitablePhysicalDevice(
     , extensions( std::move( supported_extensions ) )
 {
     auto const properties = physical_device.getProperties( );
-    spdlog::info( "Found device: {}", std::string{ properties.deviceName } );
+    spdlog::info( "Found device: {}", std::string( properties.deviceName.data( ) ) );
 
     score = score_physical_device( properties, static_cast< uint32 >( extensions.size( ) ) );
 }
