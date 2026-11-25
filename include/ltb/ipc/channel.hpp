@@ -12,6 +12,10 @@
 #include "ltb/ipc/unix_socket.hpp"
 #endif
 
+#if defined( _WIN32 )
+#include <memory>
+#endif
+
 // standard
 #include <cstddef>
 #include <optional>
@@ -23,16 +27,18 @@
 /// A platform-neutral connection between processes that sends whole messages along with
 /// native handles (`NativeHandle`). All operations are non-blocking.
 ///
-/// Backends (each in `src/ltb/ipc/channel_<platform>.cpp`):
+/// Backends (each in `src/ltb/ipc/<platform>/`):
 ///
 ///   Linux    Unix domain socket (SOCK_SEQPACKET); handles are fds sent with SCM_RIGHTS.
-///   Windows  Not implemented yet. Plan: a message-mode named pipe. A sent handle is
-///            duplicated into the receiving process with DuplicateHandle (the peer's process
-///            id comes from GetNamedPipeClientProcessId / GetNamedPipeServerProcessId).
+///   Windows  A message-mode named pipe. A sent handle is duplicated into the receiving
+///            process with DuplicateHandle (the peer's process id comes from
+///            GetNamedPipeClientProcessId / GetNamedPipeServerProcessId), and the duplicate's
+///            value is sent in the message. Not yet built or tested on Windows.
 ///   macOS    Not implemented yet. Plan: Mach messages (or XPC) carrying Mach port rights.
 ///
-/// To add a platform: implement this header's functions in a new channel_<platform>.cpp,
-/// define `NativeHandle` for it in native_handle.hpp, and add the file to CMakeLists.txt.
+/// To add a platform: implement this header's functions in src/ltb/ipc/<platform>/, define
+/// `NativeHandle` and `LTB_IPC_SUPPORTED` for it in native_handle.hpp, and select the
+/// directory in CMakeLists.txt.
 namespace ltb::ipc
 {
 
@@ -42,9 +48,10 @@ using ChannelAddress = std::string;
 
 /// \brief A per-user address for `name` that other processes of the same user can find.
 ///        Linux: `$XDG_RUNTIME_DIR/<name>.sock` (or a per-user path in /tmp).
+///        Windows: `\\.\pipe\<name>-<session id>`.
 auto default_channel_address( std::string_view name ) -> ChannelAddress;
 
-#if defined( __linux__ )
+#if defined( LTB_IPC_SUPPORTED )
 
 class Channel
 {
@@ -78,9 +85,17 @@ public:
 
 private:
     friend class ChannelListener;
+
+#if defined( __linux__ )
     explicit Channel( UnixSocket socket );
 
     UnixSocket socket_ = { };
+#elif defined( _WIN32 )
+    Channel( WinHandle pipe, WinHandle peer_process );
+
+    WinHandle pipe_         = { }; ///< The connected pipe (opened for overlapped I/O)
+    WinHandle peer_process_ = { }; ///< The other process, opened to duplicate handles into
+#endif
 };
 
 class ChannelListener
@@ -96,12 +111,33 @@ public:
     auto is_valid( ) const -> bool;
 
     /// \brief Accepts a pending connection, or returns `std::nullopt` if there isn't one.
-    auto accept( ) const -> utils::Result< std::optional< Channel > >;
+    auto accept( ) -> utils::Result< std::optional< Channel > >;
+
+#if defined( _WIN32 )
+    // Defined in the .cpp, where `PendingConnection` is complete.
+    ~ChannelListener( );
+    ChannelListener( ChannelListener&& ) noexcept;
+    auto operator=( ChannelListener&& ) noexcept -> ChannelListener&;
+#endif
 
 private:
+#if defined( __linux__ )
     explicit ChannelListener( UnixSocket socket );
 
     UnixSocket socket_ = { };
+#elif defined( _WIN32 )
+    /// \brief A pipe instance waiting (with overlapped I/O) for the next client.
+    struct PendingConnection;
+
+    ChannelListener( ChannelAddress address, std::unique_ptr< PendingConnection > pending );
+
+    /// \brief Creates a pipe instance and starts waiting (without blocking) for a client.
+    static auto start_listening( ChannelAddress const& address, bool first_instance )
+        -> utils::Result< std::unique_ptr< PendingConnection > >;
+
+    ChannelAddress                       address_ = { };
+    std::unique_ptr< PendingConnection > pending_ = nullptr;
+#endif
 };
 
 #endif

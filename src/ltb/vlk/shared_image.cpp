@@ -1,12 +1,15 @@
 // ///////////////////////////////////////////////////////////////////////////////////////
 // A Logan Thomas Barnes project
 // ///////////////////////////////////////////////////////////////////////////////////////
-// The Linux backend of SharedImage: memory shared as opaque file descriptors.
-#if defined( __linux__ )
-
+// SharedImage for platforms that share memory with Vulkan external memory handles (Linux
+// and Windows). The platform-specific parts are in shared_image_<platform>.cpp, behind
+// shared_image_backend.hpp.
 #include "ltb/vlk/shared_image.hpp"
 
+#if defined( LTB_IPC_SUPPORTED )
+
 // project
+#include "shared_image_backend.hpp"
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/device.hpp"
 #include "ltb/vlk/physical_device.hpp"
@@ -16,7 +19,7 @@ namespace ltb::vlk
 namespace
 {
 
-constexpr auto handle_type = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
+auto const handle_type = detail::external_memory_handle_type( );
 
 auto image_settings( SharedImageSettings const& settings ) -> ImageSettings
 {
@@ -40,7 +43,7 @@ auto check_settings( SharedImageSettings const& settings ) -> utils::Result< voi
 
 auto shared_image_device_extensions( ) -> std::vector< char const* >
 {
-    return { VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME };
+    return detail::external_memory_device_extensions( );
 }
 
 SharedImage::SharedImage( Device& device )
@@ -116,13 +119,17 @@ auto SharedImage::import( SharedImageInfo const& info, ipc::NativeHandle handle 
         );
         LTB_CHECK_VALID( requirements.size <= info.allocation_size );
 
-        LTB_CHECK( memory_.initialize( {
-            .allocation_size   = info.allocation_size,
-            .memory_type_index = info.memory_type_index,
-            .import_fd         = handle.get( ),
-            .dedicated_image   = image_.get( ),
-        } ) );
-        handle.release( ); // Vulkan owns the descriptor once the import succeeds.
+        LTB_CHECK(
+            detail::import_memory(
+                memory_,
+                {
+                    .allocation_size   = info.allocation_size,
+                    .memory_type_index = info.memory_type_index,
+                    .dedicated_image   = image_.get( ),
+                },
+                handle
+            )
+        );
 
         VK_CHECK( device_.get( ).bindImageMemory( image_.get( ), memory_.get( ), 0U ) );
 
@@ -142,8 +149,7 @@ auto SharedImage::import( SharedImageInfo const& info, ipc::NativeHandle handle 
 auto SharedImage::export_handle( ) const -> utils::Result< ipc::NativeHandle >
 {
     LTB_CHECK_VALID( this->is_initialized( ) );
-    LTB_CHECK( auto const fd, memory_.export_fd( handle_type ) );
-    return ipc::NativeHandle{ fd };
+    return detail::export_memory( device_, memory_ );
 }
 
 auto SharedImage::is_initialized( ) const -> bool
@@ -176,4 +182,4 @@ auto SharedImage::reset( ) -> void
 
 } // namespace ltb::vlk
 
-#endif // defined( __linux__ )
+#endif // defined( LTB_IPC_SUPPORTED )

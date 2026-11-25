@@ -90,7 +90,7 @@ auto ChannelListener::is_valid( ) const -> bool
     return socket_.is_valid( );
 }
 
-auto ChannelListener::accept( ) const -> utils::Result< std::optional< Channel > >
+auto ChannelListener::accept( ) -> utils::Result< std::optional< Channel > >
 {
     LTB_CHECK( auto socket, socket_.accept( ) );
     if ( !socket.has_value( ) )

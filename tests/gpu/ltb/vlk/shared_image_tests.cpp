@@ -1,9 +1,9 @@
 // ///////////////////////////////////////////////////////////////////////////////////////
 // A Logan Thomas Barnes project
 // ///////////////////////////////////////////////////////////////////////////////////////
-#if defined( __linux__ )
-
 #include "ltb/vlk/shared_image.hpp"
+
+#if defined( LTB_IPC_SUPPORTED )
 
 // project
 #include "ltb/vlk/buffer.hpp"
@@ -254,4 +254,4 @@ TEST_F( SharedImageTest, ImporterSeesTheExportersPixels )
 } // namespace
 } // namespace ltb::vlk
 
-#endif // defined( __linux__ )
+#endif // defined( LTB_IPC_SUPPORTED )

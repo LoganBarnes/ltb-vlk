@@ -23,18 +23,19 @@
 /// backed by the same memory. Only images on the same GPU and driver can share memory
 /// (compare `PhysicalDevice::identity()`).
 ///
-/// Backends (each in `src/ltb/vlk/shared_image_<platform>.cpp`):
+/// Backends:
 ///
 ///   Linux    Opaque file descriptors (VK_KHR_external_memory_fd).
-///   Windows  Not implemented yet. Plan: NT handles (VK_KHR_external_memory_win32,
-///            eOpaqueWin32), exported with vkGetMemoryWin32HandleKHR.
+///   Windows  NT handles (VK_KHR_external_memory_win32, eOpaqueWin32), exported with
+///            vkGetMemoryWin32HandleKHR. Not yet built or tested on Windows.
 ///   macOS    Not implemented yet. Plan: IOSurfaces (VK_EXT_metal_objects). `create()` makes
 ///            an IOSurface and imports it into Vulkan, `export_handle()` returns its Mach port
 ///            (IOSurfaceCreateMachPort), and `import()` looks the surface up from the port.
 ///
-/// To add a platform: implement this header's functions in a new shared_image_<platform>.cpp
-/// and add the file to CMakeLists.txt. The interface doesn't expose how memory is shared,
-/// so callers don't change.
+/// Linux and Windows share shared_image.cpp and only differ in the few functions in
+/// src/ltb/vlk/shared_image_backend.hpp (shared_image_fd.cpp, shared_image_win32.cpp).
+/// macOS doesn't fit that model, so it would implement this header directly instead.
+/// Either way, callers don't change.
 namespace ltb::vlk
 {
 
@@ -60,7 +61,7 @@ static_assert( std::is_trivially_copyable_v< SharedImageInfo > );
 ///        `DeviceSettings::extensions` on both sides.
 auto shared_image_device_extensions( ) -> std::vector< char const* >;
 
-#if defined( __linux__ )
+#if defined( LTB_IPC_SUPPORTED )
 
 class SharedImage
 {

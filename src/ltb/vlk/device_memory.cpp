@@ -72,6 +72,7 @@ auto DeviceMemory::initialize( DeviceMemorySettings const settings ) -> utils::R
     LTB_CHECK_VALID( device_.is_initialized( ) );
 
     auto alloc_info = vk::MemoryAllocateInfo{ }
+                          .setPNext( settings.p_next )
                           .setAllocationSize( settings.allocation_size )
                           .setMemoryTypeIndex( settings.memory_type_index );
 

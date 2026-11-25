@@ -16,7 +16,7 @@ namespace ltb::ipc
 /// \brief The most native handles a single message can carry.
 inline constexpr auto max_handles_per_message = 16UZ;
 
-#if defined( __linux__ )
+#if defined( LTB_IPC_SUPPORTED )
 
 /// \brief What a non-blocking receive found.
 struct ReceivedMessage
@@ -43,7 +43,7 @@ enum class SendStatus
     Closed, ///< The other end closed the connection, so nothing was sent.
 };
 
-#if defined( __linux__ )
+#if defined( LTB_IPC_SUPPORTED )
 
 struct ReceiveResult
 {

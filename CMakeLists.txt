@@ -75,15 +75,21 @@ file(
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/window/*.cpp
 )
 
-# Inter-process communication (Unix domain sockets that can pass file descriptors).
+# Inter-process communication (ipc::Channel) has a backend per platform.
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set(LtbVlk_IPC_PLATFORM linux) # Unix domain sockets that pass file descriptors
+elseif (WIN32)
+  set(LtbVlk_IPC_PLATFORM windows) # Named pipes that pass duplicated handles
+endif ()
+
+if (DEFINED LtbVlk_IPC_PLATFORM)
   file(
     GLOB_RECURSE
     LtbVlk_IPC_SOURCE_FILES
     LIST_DIRECTORIES
     false
     CONFIGURE_DEPENDS
-    ${CMAKE_CURRENT_LIST_DIR}/src/ltb/ipc/*.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/ltb/ipc/${LtbVlk_IPC_PLATFORM}/*.cpp
   )
   list(APPEND LtbVlk_CORE_SOURCE_FILES ${LtbVlk_IPC_SOURCE_FILES})
 endif ()

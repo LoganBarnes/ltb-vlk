@@ -56,7 +56,7 @@ then runs all tests on lavapipe with the validation layer enabled.
 | `particles-app`  | Compute-shader particle simulation                                          |
 | `particles2-app` | Particle simulation with fixed-step compute updates                         |
 | `headless-app`   | Runs the update loop with no window or GPU                                  |
-| `share-app`      | Shares rendered output between processes (Linux only, see below)            |
+| `share-app`      | Shares rendered output between processes (Linux; Windows untested)         |
 | `raw-app`        | GLFW/OpenGL scratch app (built only if OpenGL is found)                     |
 
 ## Sharing output between processes
@@ -90,8 +90,9 @@ means adding a backend for each, without changing the app:
 | `vlk::SharedImage` (`ltb/vlk/shared_image.hpp`) | Create, export and import images with shared memory | Opaque fds (`VK_KHR_external_memory_fd`) | NT handles (`VK_KHR_external_memory_win32`) | IOSurfaces (`VK_EXT_metal_objects`) |
 | `ipc::Channel` (`ltb/ipc/channel.hpp`) | Send messages and native handles between processes | Unix socket + `SCM_RIGHTS` | Named pipe + `DuplicateHandle` | Mach messages / XPC |
 
-Each header documents what a new backend has to implement. Only the Linux backends exist
-today, so `share-app` is built on Linux only.
+Each header documents what a new backend has to implement. `share-app` is built on Linux
+and Windows. The Windows backends are written but haven't been built or tested on Windows
+yet; the macOS ones are only planned.
 
 ### Useful References
 

@@ -1,20 +1,27 @@
 // ///////////////////////////////////////////////////////////////////////////////////////
 // A Logan Thomas Barnes project
 // ///////////////////////////////////////////////////////////////////////////////////////
-#if defined( __linux__ )
-
 #include "ltb/ipc/channel.hpp"
+
+#if defined( LTB_IPC_SUPPORTED )
 
 // external
 #include <gtest/gtest.h>
 
 // system
+#if defined( _WIN32 )
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#else
 #include <unistd.h>
+#endif
 
 // standard
 #include <array>
+#include <chrono>
 #include <cstdint>
-#include <filesystem>
 #include <string>
 
 namespace ltb::ipc
@@ -46,8 +53,11 @@ protected:
         server_ = std::move( server->value( ) );
     }
 
-    ChannelAddress const address_
-        = default_channel_address( "ltb-vlk-channel-test-" + std::to_string( ::getpid( ) ) );
+    // Unique per run, so tests running at the same time don't collide.
+    ChannelAddress const address_ = default_channel_address(
+        "ltb-vlk-channel-test-"
+        + std::to_string( std::chrono::steady_clock::now( ).time_since_epoch( ).count( ) )
+    );
 
     ChannelListener listener_ = { };
     Channel         client_   = { };
@@ -61,30 +71,75 @@ TEST( ChannelAddressTests, DefaultAddressIsPerNameAndUser )
     EXPECT_NE( address, default_channel_address( "other-app" ) );
 }
 
+/// \brief A handle to send, and a way to check a received copy refers to the same object.
+///        Linux: the write end of a pipe. Windows: a manual-reset event.
+struct TestObject
+{
+    NativeHandle handle;
+#if !defined( _WIN32 )
+    NativeHandle read_end;
+#endif
+
+    static auto make( ) -> TestObject
+    {
+#if defined( _WIN32 )
+        return { .handle = NativeHandle{ ::CreateEventW( nullptr, TRUE, FALSE, nullptr ) } };
+#else
+        auto fds = std::array{ -1, -1 };
+        EXPECT_EQ( ::pipe( fds.data( ) ), 0 );
+        return { .handle = NativeHandle{ fds[ 1 ] }, .read_end = NativeHandle{ fds[ 0 ] } };
+#endif
+    }
+
+    /// \brief Uses `copy` and checks the effect is visible through the original object.
+    auto is_same_object( NativeHandle const& copy ) const -> bool
+    {
+#if defined( _WIN32 )
+        return ::SetEvent( copy.get( ) )
+            && ( WAIT_OBJECT_0 == ::WaitForSingleObject( handle.get( ), 0U ) );
+#else
+        auto const byte = char{ 'x' };
+        auto       read = char{ };
+        return ( 1 == ::write( copy.get( ), &byte, 1U ) )
+            && ( 1 == ::read( read_end.get( ), &read, 1U ) ) && ( 'x' == read );
+#endif
+    }
+};
+
 TEST_F( ChannelTest, SendsMessagesAndHandles )
 {
-    auto pipe_fds = std::array{ -1, -1 };
-    ASSERT_EQ( ::pipe( pipe_fds.data( ) ), 0 );
-    auto const read_end   = NativeHandle{ pipe_fds[ 0 ] };
-    auto const write_ends = std::array{ NativeHandle{ pipe_fds[ 1 ] } };
+    auto const object  = TestObject::make( );
+    auto const handles = std::span{ &object.handle, 1U };
+    ASSERT_TRUE( object.handle.is_valid( ) );
 
-    auto const sent = client_.send_value( Ping{ .value = 7U }, write_ends );
+    auto const sent = client_.send_value( Ping{ .value = 7U }, handles );
     ASSERT_TRUE( sent.has_value( ) ) << sent.error( ).error_message( );
     EXPECT_EQ( sent.value( ), SendStatus::Sent );
 
     auto ping     = Ping{ };
     auto received = server_.receive( std::as_writable_bytes( std::span{ &ping, 1U } ) );
-    ASSERT_TRUE( received.has_value( ) );
+    ASSERT_TRUE( received.has_value( ) ) << received.error( ).error_message( );
     ASSERT_EQ( received->status, ReceiveStatus::Message );
     EXPECT_EQ( ping.value, 7U );
     ASSERT_EQ( received->message.handles.size( ), 1U );
 
-    // The received handle is a working copy of the write end.
-    auto const byte = char{ 'x' };
-    ASSERT_EQ( ::write( received->message.handles[ 0 ].get( ), &byte, 1U ), 1 );
-    auto read_byte = char{ };
-    ASSERT_EQ( ::read( read_end.get( ), &read_byte, 1U ), 1 );
-    EXPECT_EQ( read_byte, 'x' );
+    // The received handle is a working copy of the sent one.
+    EXPECT_TRUE( object.is_same_object( received->message.handles[ 0 ] ) );
+}
+
+TEST_F( ChannelTest, ReceiveWouldBlockWhenEmpty )
+{
+    auto ping     = Ping{ };
+    auto received = server_.receive( std::as_writable_bytes( std::span{ &ping, 1U } ) );
+    ASSERT_TRUE( received.has_value( ) );
+    EXPECT_EQ( received->status, ReceiveStatus::WouldBlock );
+}
+
+TEST_F( ChannelTest, AcceptWithoutAClientReturnsNothing )
+{
+    auto accepted = listener_.accept( );
+    ASSERT_TRUE( accepted.has_value( ) );
+    EXPECT_FALSE( accepted->has_value( ) );
 }
 
 TEST_F( ChannelTest, RejectsInvalidHandles )
@@ -110,4 +165,4 @@ TEST_F( ChannelTest, ReportsAClosedPeer )
 } // namespace
 } // namespace ltb::ipc
 
-#endif // defined( __linux__ )
+#endif // defined( LTB_IPC_SUPPORTED )
