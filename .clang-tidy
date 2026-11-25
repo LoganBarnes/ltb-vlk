@@ -1,4 +1,4 @@
-Checks: '-*,google-default-arguments,google-explicit-constructor,google-runtime-operator,modernize-use-trailing-return-type'
+Checks: '-*,google-default-arguments,google-explicit-constructor,google-runtime-operator,modernize-use-trailing-return-type,readability-identifier-naming'
 CheckOptions:
   - { key: readability-identifier-naming.NamespaceCase,       value: lower_case }
   - { key: readability-identifier-naming.ClassCase,           value: CamelCase  }
@@ -13,6 +13,5 @@ CheckOptions:
   - { key: google-readability-namespace-comments.ShortNamespaceLines,       value: '10'  }
   - { key: google-readability-namespace-comments.SpacesBeforeComments,      value: '2'   }
   - { key: modernize-use-nullptr.NullMacros,        value: 'NULL'     }
-WarningsAsErrors: true,true
-AnalyzeTemporaryDtors: false
+WarningsAsErrors: '*'
 ...
