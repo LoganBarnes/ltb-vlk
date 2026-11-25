@@ -33,11 +33,11 @@ auto ObjsAppPipeline::initialize( ObjsAppPipelineSettings settings ) -> utils::R
     }
     auto shader_modules = std::vector< vlk::ShaderModuleSettings >{
         {
-            .spirv_file = vlk::config::shader_dir_path( ) / "tutorial.vert.spv",
+            .spirv_file = vlk::config::spirv_dir_path( ) / "tutorial.vert.spv",
             .stage      = vk::ShaderStageFlagBits::eVertex,
         },
         {
-            .spirv_file = vlk::config::shader_dir_path( ) / "tutorial.frag.spv",
+            .spirv_file = vlk::config::spirv_dir_path( ) / "tutorial.frag.spv",
             .stage      = vk::ShaderStageFlagBits::eFragment,
         },
     };

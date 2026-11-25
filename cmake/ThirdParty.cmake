@@ -5,18 +5,22 @@
 ### System Packages ###
 find_package( Threads REQUIRED )
 
-# Parallel execution policies work out of the box with MSVC.
-# For GCC and Clang (and maybe Intel?) we need to find and
-# link Intel's Thread Building Blocks (TBB) library.
+# Parallel execution policies work out of the box with MSVC. With GCC's
+# libstdc++ they run in parallel only if Intel's Thread Building Blocks (TBB)
+# is linked, so link it when it's available (it's linked via
+# $<TARGET_NAME_IF_EXISTS:TBB::tbb>).
+#   MacOS: brew install tbb
+#   Linux: sudo apt install libtbb-dev
 if( NOT MSVC )
-  # MacOS: brew install tbb
-  # Linux: sudo apt install libtbb-dev
-  find_package( TBB REQUIRED )
+  find_package( TBB QUIET )
 endif()
 
 # Graphics APIs
 find_package( Vulkan REQUIRED )
 message(STATUS "Vulkan version ${Vulkan_VERSION}")
+if( NOT TARGET Vulkan::glslc )
+  message( FATAL_ERROR "glslc was not found. It is needed to compile shaders and ships with the Vulkan SDK." )
+endif()
 
 ### External Repositories ###
 cpmaddpackage(
@@ -33,7 +37,7 @@ cpmaddpackage(
   NAME
   expected
   GIT_TAG
-  ltb # master
+  b488633afd97b1c7f36c85b3032fe115e24e2524 # ltb branch
   GITHUB_REPOSITORY
   LoganBarnes/expected
   OPTIONS

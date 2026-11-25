@@ -38,9 +38,16 @@ inline auto models_dir_path( ) -> std::filesystem::path
     return res_dir_path( ) / "models";
 }
 
+/// \brief The GLSL shader sources.
 inline auto shader_dir_path( ) -> std::filesystem::path
 {
     return res_dir_path( ) / "shaders";
+}
+
+/// \brief The compiled SPIR-V shaders (`<shader file name>.spv`), in the build directory.
+inline auto spirv_dir_path( ) -> std::filesystem::path
+{
+    return "@LTB_VLK_SPIRV_DIR@";
 }
 
 } // namespace ltb::vlk::config

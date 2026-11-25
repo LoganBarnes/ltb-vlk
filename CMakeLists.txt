@@ -8,7 +8,9 @@ project(LtbVlk VERSION 0.0.1)
 set(GLOBAL_DEPENDS_NO_CYCLES ON)
 
 # Prevent cmake from creating build artifacts in the source directory
-set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
+  message(FATAL_ERROR "In-source builds are not allowed. Use a separate build directory (e.g. cmake -B build).")
+endif ()
 
 # ##############################################################################
 # Options
@@ -43,7 +45,10 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/ThirdParty.cmake)
 # Configuration
 # ##############################################################################
 # A directory where generated files can be stored and referenced
-set(LTB_VLK_GENERATED_DIR ${CMAKE_BINARY_DIR}/generated)
+set(LTB_VLK_GENERATED_DIR ${PROJECT_BINARY_DIR}/generated)
+
+# Compiled SPIR-V shaders are written here (mirroring res/shaders).
+set(LTB_VLK_SPIRV_DIR ${PROJECT_BINARY_DIR}/shaders)
 
 configure_file(
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/ltb_vlk_config.hpp.in
@@ -61,11 +66,8 @@ file(
   LIST_DIRECTORIES
   false
   CONFIGURE_DEPENDS
-  ${CMAKE_CURRENT_LIST_DIR}/src/ltb/dd/*.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/src/ltb/ddd/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/cam/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/display/*.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/src/ltb/exec/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/geom/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/gui/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/utils/*.cpp
@@ -121,9 +123,10 @@ target_compile_features(
 target_compile_definitions(
   LtbVlk
   PUBLIC
-  # Deal with windows warnings and macros.
-  $<$<PLATFORM_ID:Windows>:_CRT_SECURE_NO_WARNINGS>
+  # Public headers use std::min/std::max, which windows.h macros would break.
   $<$<PLATFORM_ID:Windows>:NOMINMAX>
+  PRIVATE
+  $<$<PLATFORM_ID:Windows>:_CRT_SECURE_NO_WARNINGS>
 )
 set_target_properties(
   LtbVlk
@@ -133,7 +136,7 @@ set_target_properties(
 )
 target_compile_options(
   LtbVlk
-  PUBLIC
+  PRIVATE
   # Ignore any headers using angle brackets on windows
   $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/experimental:external>
   $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/external:anglebrackets>
@@ -145,10 +148,21 @@ target_compile_options(
 # ##############################################################################
 # Development Settings
 # ##############################################################################
+# Strict warnings for this project's own targets (library, apps, tests). Linked
+# PRIVATE so projects that consume LtbVlk don't inherit -Werror and friends.
+add_library(
+  ltb_vlk_warnings
+  INTERFACE
+)
+add_library(
+  LtbVlk::warnings
+  ALIAS
+  ltb_vlk_warnings
+)
 if (LTB_VLK_USE_STRICT_FLAGS)
   target_compile_options(
-    LtbVlk
-    PUBLIC
+    ltb_vlk_warnings
+    INTERFACE
     # Strict warnings/errors with gcc and clang
     $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>:-Wall>
     $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang,AppleClang>:-Wextra>
@@ -176,38 +190,43 @@ if (LTB_VLK_USE_STRICT_FLAGS)
     $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/WX>
   )
 endif ()
+target_link_libraries(
+  LtbVlk
+  PRIVATE
+  $<BUILD_INTERFACE:LtbVlk::warnings>
+)
 
 # ##############################################################################
 # Applications
 # ##############################################################################
 if (LTB_VLK_BUILD_EXAMPLES)
 
-  find_package(
-    OpenGL
-    REQUIRED
-  )
+  # OpenGL is only needed by the `raw` example, which is skipped if it's missing.
+  find_package(OpenGL)
 
-  # Library allowing OpenGL functions to be loaded at runtime.
-  add_library(
-    ltb_ogl_loader
-    ${CMAKE_CURRENT_LIST_DIR}/external/src/GL/gl3w.c
-  )
-  add_library(
-    ltb_ogl::loader
-    ALIAS
-    ltb_ogl_loader
-  )
-  target_link_libraries(
-    ltb_ogl_loader
-    PUBLIC
-    OpenGL::GL
-  )
-  target_include_directories(
-    ltb_ogl_loader
-    SYSTEM
-    PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/external/include>
-  )
+  if (OpenGL_FOUND)
+    # Library allowing OpenGL functions to be loaded at runtime.
+    add_library(
+      ltb_ogl_loader
+      ${CMAKE_CURRENT_LIST_DIR}/external/src/GL/gl3w.c
+    )
+    add_library(
+      ltb_ogl::loader
+      ALIAS
+      ltb_ogl_loader
+    )
+    target_link_libraries(
+      ltb_ogl_loader
+      PUBLIC
+      OpenGL::GL
+    )
+    target_include_directories(
+      ltb_ogl_loader
+      SYSTEM
+      PUBLIC
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/external/include>
+    )
+  endif ()
 
   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/src/ltb/apps)
 endif ()

@@ -29,12 +29,16 @@ add_library(
   ltb_vlk_generate_spirv
 )
 
-# Generate the SPIR-V file for each shader
+# Generate the SPIR-V file for each shader in the build directory (mirroring this
+# directory's layout) so separate build directories don't overwrite each other.
 foreach( SHADER_FILE ${LtbVlk_SHADERS} )
-  set( SPIRV_FILE ${SHADER_FILE}.spv )
+  file( RELATIVE_PATH SHADER_RELATIVE_PATH ${CMAKE_CURRENT_LIST_DIR} ${SHADER_FILE} )
+  set( SPIRV_FILE ${LTB_VLK_SPIRV_DIR}/${SHADER_RELATIVE_PATH}.spv )
+  get_filename_component( SPIRV_DIR ${SPIRV_FILE} DIRECTORY )
 
   add_custom_command(
     OUTPUT ${SPIRV_FILE}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${SPIRV_DIR}
     COMMAND $<TARGET_FILE:Vulkan::glslc>
     ARGS ${SHADER_FILE} -o ${SPIRV_FILE}
     DEPENDS ${SHADER_FILE} ${LtbVlk_SHADER_INCLUDES}

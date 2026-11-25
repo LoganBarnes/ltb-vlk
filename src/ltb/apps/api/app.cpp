@@ -350,12 +350,12 @@ auto ApiApp::initialize_graphics( ) -> utils::Result< ApiApp* >
 
     LTB_CHECK( graphics_.shader_modules.emplace_back( gpu_.device )
                    .initialize( {
-                       .spirv_file = vlk::config::shader_dir_path( ) / "tutorial.vert.spv",
+                       .spirv_file = vlk::config::spirv_dir_path( ) / "tutorial.vert.spv",
                        .stage      = vk::ShaderStageFlagBits::eVertex,
                    } ) );
     LTB_CHECK( graphics_.shader_modules.emplace_back( gpu_.device )
                    .initialize( {
-                       .spirv_file = vlk::config::shader_dir_path( ) / "tutorial.frag.spv",
+                       .spirv_file = vlk::config::spirv_dir_path( ) / "tutorial.frag.spv",
                        .stage      = vk::ShaderStageFlagBits::eFragment,
                    } ) );
 

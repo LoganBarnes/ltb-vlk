@@ -1,4 +1,4 @@
-﻿---
+---
 Language: Cpp
 AccessModifierOffset: -4
 AlignAfterOpenBracket: BlockIndent
@@ -113,7 +113,7 @@ SpacesInContainerLiterals: true
 SpacesInCStyleCastParentheses: true
 SpacesInParentheses: true
 SpacesInSquareBrackets: true
-Standard: c++20
+Standard: Latest
 StatementMacros:
   - Q_UNUSED
   - QT_REQUIRE_VERSION

@@ -19,6 +19,7 @@ function(ltb_make_app directory)
     ${directory}-app
     PRIVATE
     LtbVlk::LtbVlk
+    LtbVlk::warnings
   )
 endfunction()
 
@@ -28,9 +29,11 @@ ltb_make_app(objs)
 ltb_make_app(particles)
 ltb_make_app(particles2)
 
-ltb_make_app(raw)
-target_link_libraries(
-  raw-app
-  PRIVATE
-  ltb_ogl::loader
-)
+if (TARGET ltb_ogl::loader)
+  ltb_make_app(raw)
+  target_link_libraries(
+    raw-app
+    PRIVATE
+    ltb_ogl::loader
+  )
+endif ()

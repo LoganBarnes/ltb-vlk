@@ -166,7 +166,7 @@ auto ParticlesApp::initialize_gpu_presentation( ) -> utils::Result< ParticlesApp
 auto ParticlesApp::initialize_compute_pipeline( ) -> utils::Result< ParticlesApp* >
 {
     auto shader_module = vlk::ShaderModuleSettings{
-        .spirv_file = vlk::config::shader_dir_path( ) / "particles.comp.spv",
+        .spirv_file = vlk::config::spirv_dir_path( ) / "particles.comp.spv",
         .stage      = vk::ShaderStageFlagBits::eCompute,
     };
 
@@ -342,11 +342,11 @@ auto ParticlesApp::initialize_display_pipeline( ) -> utils::Result< ParticlesApp
 {
     auto shader_modules = std::vector{
         vlk::ShaderModuleSettings{
-            .spirv_file = vlk::config::shader_dir_path( ) / "particles.vert.spv",
+            .spirv_file = vlk::config::spirv_dir_path( ) / "particles.vert.spv",
             .stage      = vk::ShaderStageFlagBits::eVertex,
         },
         vlk::ShaderModuleSettings{
-            .spirv_file = vlk::config::shader_dir_path( ) / "particles.frag.spv",
+            .spirv_file = vlk::config::spirv_dir_path( ) / "particles.frag.spv",
             .stage      = vk::ShaderStageFlagBits::eFragment,
         },
     };

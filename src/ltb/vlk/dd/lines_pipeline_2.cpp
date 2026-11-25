@@ -33,11 +33,11 @@ auto LinesPipeline2::initialize( LinesPipeline2Settings const& settings ) -> uti
 
     auto shader_modules = std::vector< ShaderModuleSettings >{
         {
-            .spirv_file = config::shader_dir_path( ) / "lines_2d.vert.spv",
+            .spirv_file = config::spirv_dir_path( ) / "lines_2d.vert.spv",
             .stage      = vk::ShaderStageFlagBits::eVertex,
         },
         {
-            .spirv_file = config::shader_dir_path( ) / "lines_2d.frag.spv",
+            .spirv_file = config::spirv_dir_path( ) / "lines_2d.frag.spv",
             .stage      = vk::ShaderStageFlagBits::eFragment,
         },
     };

@@ -28,6 +28,7 @@ function(ltb_vlk_add_test_suite directory label)
     ${target}
     PRIVATE
     LtbVlk::LtbVlk
+    LtbVlk::warnings
     GTest::gtest_main
   )
   target_include_directories(
