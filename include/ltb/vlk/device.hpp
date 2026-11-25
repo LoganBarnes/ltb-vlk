@@ -32,11 +32,17 @@ public:
     [[nodiscard( "Const getter" )]]
     auto queues( ) const -> QueueMap const&;
 
+    /// \brief True if `vk::PresentModeKHR::eFifoLatestReady` can be used with this device
+    ///        (the extension is enabled and the GPU supports the feature).
+    [[nodiscard( "Const getter" )]]
+    auto fifo_latest_ready_enabled( ) const -> bool;
+
 private:
     PhysicalDevice& physical_device_;
 
-    vk::UniqueDevice device_ = { };
-    QueueMap         queues_ = { };
+    vk::UniqueDevice device_                    = { };
+    QueueMap         queues_                    = { };
+    bool             fifo_latest_ready_enabled_ = false;
 };
 
 } // namespace ltb::vlk

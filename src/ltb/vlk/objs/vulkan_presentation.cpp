@@ -29,6 +29,13 @@ auto VulkanPresentation::initialize( VulkanPresentationSettings settings ) -> ut
         return utils::success( );
     }
     LTB_CHECK_VALID( gpu_.is_initialized( ) );
+    LTB_CHECK_VALID( gpu_.has_surface( ), "presentation needs a GPU created with a window" );
+
+    if ( !swapchain_.has_value( ) )
+    {
+        swapchain_
+            .emplace( gpu_.instance( ), gpu_.surface( ), gpu_.physical_device( ), gpu_.device( ) );
+    }
 
     if ( ExtentMode::FromSurface == settings.extent_mode )
     {
@@ -66,7 +73,7 @@ auto VulkanPresentation::rebuild( VulkanPresentationRebuildSettings settings )
     }
 
     if ( ( Rebuild::IfSizeChanged == settings.rebuild )
-         && ( settings.swapchain.extent == swapchain_.settings( ).extent ) )
+         && ( settings.swapchain.extent == swapchain_->settings( ).extent ) )
     {
         return utils::success( );
     }
@@ -107,7 +114,7 @@ auto VulkanPresentation::begin_render_pass( BeginRenderPassSettings const& setti
         );
     }
 
-    auto const default_render_area = vk::Rect2D{ }.setExtent( swapchain_.settings( ).extent );
+    auto const default_render_area = vk::Rect2D{ }.setExtent( swapchain_->settings( ).extent );
     auto const render_area         = settings.render_area.value_or( default_render_area );
 
     auto const render_pass_info = vk::RenderPassBeginInfo{ }
@@ -121,8 +128,8 @@ auto VulkanPresentation::begin_render_pass( BeginRenderPassSettings const& setti
         = vk::Viewport{ }
               .setX( 0.0F )
               .setY( 0.0F )
-              .setWidth( static_cast< float32 >( swapchain_.settings( ).extent.width ) )
-              .setHeight( static_cast< float32 >( swapchain_.settings( ).extent.height ) )
+              .setWidth( static_cast< float32 >( swapchain_->settings( ).extent.width ) )
+              .setHeight( static_cast< float32 >( swapchain_->settings( ).extent.height ) )
               .setMinDepth( 0.0F )
               .setMaxDepth( 1.0F );
 
@@ -132,7 +139,7 @@ auto VulkanPresentation::begin_render_pass( BeginRenderPassSettings const& setti
     settings.command_buffer.setViewport( first_viewport_index, viewports );
 
     auto const default_scissor
-        = vk::Rect2D{ }.setOffset( { 0, 0 } ).setExtent( swapchain_.settings( ).extent );
+        = vk::Rect2D{ }.setOffset( { 0, 0 } ).setExtent( swapchain_->settings( ).extent );
 
     auto const     scissor             = settings.scissor.value_or( default_scissor );
     auto const     scissors            = std::vector{ scissor };
@@ -144,12 +151,12 @@ auto VulkanPresentation::begin_render_pass( BeginRenderPassSettings const& setti
 
 auto VulkanPresentation::swapchain( ) const -> Swapchain const&
 {
-    return swapchain_;
+    return swapchain_.value( );
 }
 
 auto VulkanPresentation::swapchain( ) -> Swapchain&
 {
-    return swapchain_;
+    return swapchain_.value( );
 }
 
 auto VulkanPresentation::swapchain_image_views( ) const -> std::vector< ImageView > const&
@@ -231,21 +238,21 @@ auto VulkanPresentation::initialize_swapchain(
     framebuffers_.clear( );
     swapchain_image_views_.clear( );
 
-    LTB_CHECK( swapchain_.initialize( std::move( swapchain_settings ), Reinitialize::Always ) );
+    LTB_CHECK( swapchain_->initialize( std::move( swapchain_settings ), Reinitialize::Always ) );
 
     // The swapchain clamps the requested extent to the surface limits.
-    auto const extent = swapchain_.settings( ).extent;
+    auto const extent = swapchain_->settings( ).extent;
 
-    swapchain_image_views_.reserve( swapchain_.images( ).size( ) );
-    for ( auto const& image : swapchain_.images( ) )
+    swapchain_image_views_.reserve( swapchain_->images( ).size( ) );
+    for ( auto const& image : swapchain_->images( ) )
     {
         LTB_CHECK( swapchain_image_views_.emplace_back( gpu_.device( ) )
                        .initialize( {
                            .image  = image,
-                           .format = swapchain_.image_format( ),
+                           .format = swapchain_->image_format( ),
                        } ) );
     }
-    LTB_CHECK_VALID( swapchain_.images( ).size( ) == swapchain_image_views_.size( ) );
+    LTB_CHECK_VALID( swapchain_->images( ).size( ) == swapchain_image_views_.size( ) );
 
     if ( vk::Format::eUndefined != render_pass_settings.depth_attachment_format )
     {
@@ -268,7 +275,9 @@ auto VulkanPresentation::initialize_swapchain(
 
     if ( !render_pass_.is_initialized( ) )
     {
-        LTB_CHECK( render_pass_.initialize( std::move( render_pass_settings ), &swapchain_ ) );
+        LTB_CHECK(
+            render_pass_.initialize( std::move( render_pass_settings ), &swapchain_.value( ) )
+        );
     }
 
     framebuffers_.reserve( swapchain_image_views_.size( ) );
@@ -283,7 +292,7 @@ auto VulkanPresentation::initialize_swapchain(
         LTB_CHECK( framebuffers_.emplace_back( gpu_.device( ), render_pass_ )
                        .initialize( {
                            .attachments = attachments,
-                           .extent      = swapchain_.settings( ).extent,
+                           .extent      = swapchain_->settings( ).extent,
                            .layers      = 1U,
                        } ) );
     }

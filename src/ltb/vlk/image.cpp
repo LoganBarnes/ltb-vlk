@@ -25,18 +25,28 @@ auto Image::initialize( ImageSettings settings ) -> utils::Result< void >
         return utils::success( );
     }
     LTB_CHECK_VALID( device_.is_initialized( ) );
+    LTB_CHECK_VALID(
+        ( vk::SharingMode::eConcurrent != settings.sharing_mode )
+            || ( settings.queue_family_indices.size( ) > 1U ),
+        "concurrent sharing needs at least two queue family indices"
+    );
 
-    auto const image_info = vk::ImageCreateInfo{ }
-                                .setImageType( settings.image_type )
-                                .setExtent( settings.extent )
-                                .setMipLevels( settings.mip_levels )
-                                .setArrayLayers( settings.array_layers )
-                                .setFormat( settings.format )
-                                .setTiling( settings.tiling )
-                                .setInitialLayout( settings.initial_layout )
-                                .setUsage( settings.usage )
-                                .setSharingMode( settings.sharing_mode )
-                                .setSamples( settings.samples );
+    auto image_info = vk::ImageCreateInfo{ }
+                          .setFlags( settings.flags )
+                          .setImageType( settings.image_type )
+                          .setExtent( settings.extent )
+                          .setMipLevels( settings.mip_levels )
+                          .setArrayLayers( settings.array_layers )
+                          .setFormat( settings.format )
+                          .setTiling( settings.tiling )
+                          .setInitialLayout( settings.initial_layout )
+                          .setUsage( settings.usage )
+                          .setSharingMode( settings.sharing_mode )
+                          .setSamples( settings.samples );
+    if ( vk::SharingMode::eConcurrent == settings.sharing_mode )
+    {
+        image_info.setQueueFamilyIndices( settings.queue_family_indices );
+    }
 
     VK_CHECK( auto image, device_.get( ).createImageUnique( image_info ) );
     spdlog::debug( "vk::createImageUnique()" );

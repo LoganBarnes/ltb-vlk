@@ -16,12 +16,15 @@ struct RecordingApp
 {
     UpdateLoopStatus initial_status = { };
 
-    bool             clean_up_called = false;
+    bool                  clean_up_called = false;
     utils::Result< void > clean_up_result = utils::success( );
 
     float64 time_scale_seen = 0.0;
 
-    auto initialize( ) -> utils::Result< UpdateLoopStatus > { return initial_status; }
+    auto initialize( ) -> utils::Result< UpdateLoopStatus >
+    {
+        return initial_status;
+    }
 
     auto fixed_step_update( UpdateLoopStatus const& status ) -> UpdateRequests
     {
@@ -37,7 +40,10 @@ struct RecordingApp
         return requests;
     }
 
-    auto on_resize( glm::ivec2 ) -> utils::Result< void > { return utils::success( ); }
+    auto on_resize( glm::ivec2 ) -> utils::Result< void >
+    {
+        return utils::success( );
+    }
 
     auto clean_up( ) -> utils::Result< void >
     {
@@ -89,7 +95,8 @@ TEST( RunThenCleanUpTests, ReportsCleanUpErrorWhenLoopSucceeds )
     auto app            = RecordingApp{ };
     app.clean_up_result = LTB_MAKE_UNEXPECTED_ERROR( "clean up failed" );
 
-    auto const result = run_then_clean_up( app, [] { return utils::success( ); } );
+    auto const result
+        = run_then_clean_up( app, []( ) -> utils::Result< void > { return utils::success( ); } );
 
     ASSERT_FALSE( result.has_value( ) );
     EXPECT_EQ( result.error( ).error_message( ), "clean up failed" );

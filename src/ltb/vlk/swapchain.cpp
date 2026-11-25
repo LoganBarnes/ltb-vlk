@@ -50,10 +50,8 @@ auto Swapchain::initialize( SwapchainSettings settings, Reinitialize const reini
     LTB_CHECK_VALID( physical_device_.is_initialized( ) );
     LTB_CHECK_VALID( device_.is_initialized( ) );
 
-    image_format_ = { };
-    images_.clear( );
-    min_image_count_ = 0U;
-
+    // Members are only updated once everything succeeds, so on failure the current
+    // swapchain (if any) and its images stay valid.
     LTB_CHECK_VALID( 0U != settings.extent.width );
     LTB_CHECK_VALID( 0U != settings.extent.height );
 
@@ -67,9 +65,14 @@ auto Swapchain::initialize( SwapchainSettings settings, Reinitialize const reini
     );
 
     VK_CHECK(
-        auto const surface_present_modes,
+        auto surface_present_modes,
         physical_device_.get( ).getSurfacePresentModesKHR( surface_.get( ) )
     );
+    if ( !device_.fifo_latest_ready_enabled( ) )
+    {
+        // The surface may report this mode, but it's only valid if the device feature is on.
+        std::erase( surface_present_modes, vk::PresentModeKHR::eFifoLatestReady );
+    }
     LTB_CHECK(
         auto const present_mode,
         utils::find_first_available( settings.preferred_present_modes, surface_present_modes )

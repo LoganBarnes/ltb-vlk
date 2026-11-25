@@ -8,6 +8,9 @@
 #include "ltb/vlk/vulkan.hpp"
 #include "ltb/window/fwd.hpp"
 
+// standard
+#include <memory>
+
 namespace ltb::vlk
 {
 
@@ -60,9 +63,17 @@ public:
     auto app_info( ) const -> vk::ApplicationInfo const&;
 
 private:
+    using DebugMessenger
+        = vk::UniqueHandle< vk::DebugUtilsMessengerEXT, vk::detail::DispatchLoaderDynamic >;
+
     vk::ApplicationInfo app_info_ = { };
     InstanceSettings    settings_ = { };
     vk::UniqueInstance  instance_ = { };
+
+    // Only set if VK_EXT_debug_utils is enabled. Destroyed before the instance (member order).
+    // The dispatcher is heap allocated because the messenger keeps a pointer to it.
+    std::unique_ptr< vk::detail::DispatchLoaderDynamic > debug_dispatcher_ = nullptr;
+    DebugMessenger                                       debug_messenger_  = { };
 };
 
 } // namespace ltb::vlk

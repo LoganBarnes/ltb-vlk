@@ -47,6 +47,14 @@ public:
     );
 
     auto initialize( SwapchainSettings settings ) -> utils::Result< void >;
+
+    /// \brief Creates the swapchain, or with `Reinitialize::Always` recreates it.
+    ///
+    /// When recreating, the old swapchain is passed to Vulkan as `oldSwapchain` and then
+    /// destroyed as soon as the new one exists. The caller must make sure the GPU is done
+    /// with the old swapchain's images first (e.g. `device.waitIdle()`), and must recreate
+    /// anything built on those images (image views, framebuffers).
+    /// On failure, the current swapchain and its images are left unchanged.
     auto initialize( SwapchainSettings settings, Reinitialize reinitialize )
         -> utils::Result< void >;
 

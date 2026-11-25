@@ -257,7 +257,7 @@ auto VulkanCommandAndSync::present_frame(
     FrameInfo const& frame,
     Swapchain const& swapchain,
     vk::Queue const& present_queue
-) -> utils::Result< void >
+) -> utils::Result< SwapchainStatus >
 {
     LTB_CHECK( auto const render_finished_semaphore, this->get_present_semaphore( frame ) );
 
@@ -272,13 +272,13 @@ auto VulkanCommandAndSync::present_frame(
         case eErrorOutOfDateKHR:
         case eSuboptimalKHR:
             // Swapchain needs to be recreated. Not a real error.
-            return utils::success( );
+            return SwapchainStatus::NeedsRebuild;
         default:
             VK_CHECK( present_result );
             break;
     }
 
-    return utils::success( );
+    return SwapchainStatus::UpToDate;
 }
 
 auto VulkanCommandAndSync::increment_frame( ) -> void

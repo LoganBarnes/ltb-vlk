@@ -236,14 +236,18 @@ auto constexpr f_from_c( In const celsius )
 template < typename In, typename Out = In >
 auto constexpr c_from_k( In const kelvin )
 {
-    return static_cast< Out >( static_cast< double >( kelvin ) + constants::celsius_at_zero_kelvin );
+    return static_cast< Out >(
+        static_cast< double >( kelvin ) + constants::celsius_at_zero_kelvin
+    );
 }
 
 /// \brief Converts celsius to kelvin
 template < typename In, typename Out = In >
 auto constexpr k_from_c( In const celsius )
 {
-    return static_cast< Out >( static_cast< double >( celsius ) - constants::celsius_at_zero_kelvin );
+    return static_cast< Out >(
+        static_cast< double >( celsius ) - constants::celsius_at_zero_kelvin
+    );
 }
 
 /// \brief Converts millidegrees Celsius to degrees Celsius.

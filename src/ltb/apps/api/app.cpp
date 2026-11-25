@@ -9,9 +9,10 @@
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/device_memory_utils.hpp"
 #include "ltb/vlk/ltb_vlk_config.hpp"
+#include "ltb/window/glfw_context.hpp"
+#include "ltb/window/glfw_window.hpp"
 
 // external
-#include "ltb/window/glfw_context.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <spdlog/spdlog.h>
 
@@ -213,7 +214,13 @@ auto ApiApp::frame_update( exec::UpdateLoopStatus const& status ) -> exec::Updat
 auto ApiApp::on_resize( glm::ivec2 const size ) -> utils::Result< void >
 {
     utils::ignore( size );
+    return this->rebuild_swapchain( );
+}
 
+auto ApiApp::rebuild_swapchain( ) -> utils::Result< void >
+{
+    // The old swapchain, its image views, the framebuffers, and the depth image are all
+    // destroyed below, so the GPU must be done with them first.
     VK_CHECK( gpu_.device.get( ).waitIdle( ) );
 
     spdlog::debug( "rebuild_swapchain()" );
@@ -277,6 +284,10 @@ auto ApiApp::initialize_swapchain( ) -> utils::Result< ApiApp* >
         present_.swapchain.initialize( std::move( swapchain_settings ), vlk::Reinitialize::Always )
     );
 
+    // The swapchain clamps the requested extent to what the surface supports. Every
+    // framebuffer attachment (including the depth image) must use that clamped extent.
+    auto const swapchain_extent = present_.swapchain.settings( ).extent;
+
     present_.swapchain_image_views.reserve( present_.swapchain.images( ).size( ) );
     for ( auto const& image : present_.swapchain.images( ) )
     {
@@ -291,7 +302,7 @@ auto ApiApp::initialize_swapchain( ) -> utils::Result< ApiApp* >
     );
 
     LTB_CHECK( present_.depth_image.initialize( {
-        .extent = { extent.width, extent.height, 1 },
+        .extent = { swapchain_extent.width, swapchain_extent.height, 1 },
         .format = gpu_.physical_device.depth_image_format( ),
         .usage  = vk::ImageUsageFlagBits::eDepthStencilAttachment,
     } ) );
@@ -338,7 +349,7 @@ auto ApiApp::initialize_swapchain( ) -> utils::Result< ApiApp* >
         LTB_CHECK( present_.framebuffers.emplace_back( gpu_.device, present_.render_pass )
                        .initialize( {
                            .attachments = { image_view.get( ), present_.depth_image_view.get( ) },
-                           .extent      = present_.swapchain.settings( ).extent,
+                           .extent      = swapchain_extent,
                            .layers      = 1U,
                        } ) );
     }
@@ -464,15 +475,16 @@ auto ApiApp::initialize_command_and_sync( ) -> utils::Result< ApiApp* >
 
 auto ApiApp::initialize_camera_buffers( ) -> utils::Result< ApiApp* >
 {
-    camera_uniform_.layout.ranges.reserve( exec::max_frames_in_flight );
-    for ( auto i = 0U; i < exec::max_frames_in_flight; ++i )
-    {
-        camera_uniform_.layout.ranges.push_back( {
-            .size   = sizeof( CameraBufferObject ),
-            .offset = camera_uniform_.layout.total_size,
-        } );
-        camera_uniform_.layout.total_size += camera_uniform_.layout.ranges.back( ).size;
-    }
+    // Each frame's camera data is bound with its own descriptor offset, which must be a
+    // multiple of the device's minimum uniform buffer offset alignment.
+    auto const ubo_alignment
+        = gpu_.physical_device.properties( ).limits.minUniformBufferOffsetAlignment;
+
+    vlk::append_memory_size_n(
+        camera_uniform_.layout,
+        { sizeof( CameraBufferObject ), ubo_alignment },
+        exec::max_frames_in_flight
+    );
 
     LTB_CHECK( camera_uniform_.buffer.initialize( {
         .size  = camera_uniform_.layout.total_size,
@@ -670,8 +682,9 @@ auto ApiApp::render( ) -> utils::Result< void >
     );
     if ( image_index_result.result == vk::Result::eErrorOutOfDateKHR )
     {
-        // Swapchain needs to be recreated. Not a real error.
-        return utils::success( );
+        // No image was acquired (so the semaphore won't be signaled). Recreate the swapchain
+        // and try again next frame.
+        return this->rebuild_swapchain( );
     }
     if ( image_index_result.result != vk::Result::eSuboptimalKHR
          && image_index_result.result != vk::Result::eSuccess )
@@ -681,10 +694,9 @@ auto ApiApp::render( ) -> utils::Result< void >
             vk::to_string( image_index_result.result )
         );
     }
-    // Suboptimal is a success code: the image is acquired, so keep rendering.
+    // Suboptimal is a success code: the image is acquired, so keep rendering. Presenting
+    // will report suboptimal too, and the swapchain is rebuilt then.
     auto const image_index = image_index_result.value;
-
-    VK_CHECK( gpu_.device.get( ).resetFences( fences ) );
 
     constexpr auto reset_flags = vk::CommandBufferResetFlags{ };
     VK_CHECK( command_buffer.reset( reset_flags ) );
@@ -695,6 +707,13 @@ auto ApiApp::render( ) -> utils::Result< void >
         .frame_index    = cmd_and_sync_.current_frame_index,
     } ) );
 
+    // One semaphore per swapchain image. A rebuilt swapchain can have more images.
+    while ( cmd_and_sync_.render_finished_semaphores.size( ) <= image_index )
+    {
+        LTB_CHECK(
+            cmd_and_sync_.render_finished_semaphores.emplace_back( gpu_.device ).initialize( )
+        );
+    }
     auto const& render_finished_semaphore
         = cmd_and_sync_.render_finished_semaphores[ image_index ].get( );
 
@@ -710,6 +729,9 @@ auto ApiApp::render( ) -> utils::Result< void >
                                  .setCommandBuffers( command_buffer )
                                  .setSignalSemaphores( signal_semaphores );
 
+    // Reset right before submitting so an earlier error can't leave the fence unsignaled
+    // (which would make the next wait on it hang forever).
+    VK_CHECK( gpu_.device.get( ).resetFences( fences ) );
     VK_CHECK( gpu_.graphics_queue.submit( submit_info, in_flight_fence ) );
 
     auto const present_info = vk::PresentInfoKHR{ }
@@ -717,20 +739,23 @@ auto ApiApp::render( ) -> utils::Result< void >
                                   .setSwapchains( present_.swapchain.get( ) )
                                   .setImageIndices( image_index );
 
-    switch ( auto const present_result = gpu_.present_queue.presentKHR( present_info ) )
+    auto const present_result = gpu_.present_queue.presentKHR( present_info );
+
+    // This frame slot's work is submitted whether or not presenting succeeds.
+    cmd_and_sync_.current_frame_index
+        = ( cmd_and_sync_.current_frame_index + 1U ) % exec::max_frames_in_flight;
+
+    switch ( present_result )
     {
         using enum vk::Result;
         case eErrorOutOfDateKHR:
         case eSuboptimalKHR:
-            // Swapchain needs to be recreated. Not a real error.
-            return utils::success( );
+            // The swapchain no longer matches the surface. Not a real error.
+            return this->rebuild_swapchain( );
         default:
             VK_CHECK( present_result );
             break;
     }
-
-    cmd_and_sync_.current_frame_index
-        = ( cmd_and_sync_.current_frame_index + 1U ) % exec::max_frames_in_flight;
 
     return utils::success( );
 }

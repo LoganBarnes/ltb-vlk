@@ -13,6 +13,9 @@
 #include "ltb/vlk/render_pass.hpp"
 #include "ltb/vlk/swapchain.hpp"
 
+// standard
+#include <optional>
+
 namespace ltb::vlk::objs
 {
 
@@ -67,6 +70,7 @@ public:
 
     auto begin_render_pass( BeginRenderPassSettings const& settings ) -> utils::Result< void >;
 
+    /// \brief Only valid after `initialize()` succeeds.
     [[nodiscard( "Const getter" )]]
     auto swapchain( ) const -> Swapchain const&;
     auto swapchain( ) -> Swapchain&;
@@ -98,13 +102,9 @@ public:
 private:
     VulkanGpu& gpu_;
 
-    Swapchain swapchain_ = {
-        gpu_.instance( ),
-        gpu_.surface( ),
-        gpu_.physical_device( ),
-        gpu_.device( ),
-    };
-    std::vector< ImageView > swapchain_image_views_ = { };
+    // Created in `initialize()` once we know the GPU has a surface.
+    std::optional< Swapchain > swapchain_             = std::nullopt;
+    std::vector< ImageView >   swapchain_image_views_ = { };
 
     VulkanImage d_image_          = { gpu_ };
     ImageView   depth_image_view_ = { gpu_.device( ) };

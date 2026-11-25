@@ -5,8 +5,12 @@
 
 // project
 #include "ltb/utils/result.hpp"
+#include "ltb/utils/types.hpp"
 #include "ltb/vlk/fwd.hpp"
 #include "ltb/vlk/vulkan.hpp"
+
+// standard
+#include <vector>
 
 namespace ltb::vlk
 {
@@ -17,6 +21,10 @@ struct BufferSettings
     vk::DeviceSize        size         = 0U;
     vk::BufferUsageFlags  usage        = vk::BufferUsageFlagBits::eVertexBuffer;
     vk::SharingMode       sharing_mode = vk::SharingMode::eExclusive;
+
+    /// \brief The queue families that will access the buffer. Only used (and required, with
+    ///        at least two unique families) when `sharing_mode` is `eConcurrent`.
+    std::vector< uint32 > queue_family_indices = { };
 };
 
 class Buffer

@@ -135,10 +135,20 @@ auto ParticlesApp::configure_gui( ) -> void
 
 auto ParticlesApp::on_resize( glm::ivec2 const size ) -> utils::Result< void >
 {
-    camera_.resize( glm::vec2( size ) );
+    utils::ignore( size );
+    return this->rebuild_presentation( vlk::objs::Rebuild::IfSizeChanged );
+}
+
+auto ParticlesApp::rebuild_presentation( vlk::objs::Rebuild const rebuild ) -> utils::Result< void >
+{
+    LTB_CHECK( presentation_.rebuild( { .rebuild = rebuild } ) );
+
+    // Match the camera to the (possibly clamped) swapchain size.
+    auto const extent = presentation_.swapchain( ).settings( ).extent;
+    camera_.resize( glm::vec2( extent.width, extent.height ) );
     camera_frames_updated_.clear( );
 
-    return presentation_.rebuild( { } );
+    return utils::success( );
 }
 
 auto ParticlesApp::clean_up( ) -> utils::Result< void >
@@ -250,10 +260,14 @@ auto ParticlesApp::initialize_particles( ) -> utils::Result< ParticlesApp* >
         particle_buffer_size == ( cpu_particles.size( ) * sizeof( cpu_particles[ 0 ] ) )
     );
 
+    // Each frame's range is bound with its own descriptor offset, which must be aligned.
+    auto const ssbo_alignment
+        = gpu_.physical_device( ).properties( ).limits.minStorageBufferOffsetAlignment;
+
     auto gpu_particles_layout = vlk::MemoryLayout{ };
     vlk::append_memory_size_n(
         gpu_particles_layout,
-        particle_buffer_size,
+        { particle_buffer_size, ssbo_alignment },
         exec::max_frames_in_flight
     );
 
@@ -415,11 +429,15 @@ auto ParticlesApp::initialize_display_pipeline( ) -> utils::Result< ParticlesApp
 
 auto ParticlesApp::initialize_camera( ) -> utils::Result< ParticlesApp* >
 {
+    // Each frame's range is bound with its own descriptor offset, which must be aligned.
+    auto const ubo_alignment
+        = gpu_.physical_device( ).properties( ).limits.minUniformBufferOffsetAlignment;
+
     auto camera_buffer_layout = vlk::MemoryLayout{ };
 
     append_memory_size_n(
         camera_buffer_layout,
-        sizeof( CameraBufferObject ),
+        { sizeof( CameraBufferObject ), ubo_alignment },
         exec::max_frames_in_flight
     );
 
@@ -506,6 +524,18 @@ auto ParticlesApp::record_compute_commands( vlk::objs::FrameInfo const& frame )
 {
     VK_CHECK( frame.command_buffer.begin( vk::CommandBufferBeginInfo{ } ) );
 
+    // An earlier graphics frame may still be reading (as vertices) the particle range this
+    // pass overwrites. Both passes use the same queue, so an execution barrier against all
+    // earlier vertex input is enough to avoid the write-after-read hazard.
+    frame.command_buffer.pipelineBarrier(
+        vk::PipelineStageFlagBits::eVertexInput,
+        vk::PipelineStageFlagBits::eComputeShader,
+        vk::DependencyFlags{ },
+        { },
+        { },
+        { }
+    );
+
     compute_.bind( frame.command_buffer );
 
     LTB_CHECK( compute_.bind_descriptor_sets( frame ) );
@@ -567,10 +597,23 @@ auto ParticlesApp::render( ) -> utils::Result< void >
             graphics_and_compute_queue_
         ) );
 
-        LTB_CHECK( graphics_cmd_and_sync_
-                       .present_frame( frame, presentation_.swapchain( ), present_queue_ ) );
+        LTB_CHECK(
+            auto const swapchain_status,
+            graphics_cmd_and_sync_
+                .present_frame( frame, presentation_.swapchain( ), present_queue_ )
+        );
 
         graphics_cmd_and_sync_.increment_frame( );
+
+        if ( vlk::objs::SwapchainStatus::NeedsRebuild == swapchain_status )
+        {
+            return this->rebuild_presentation( vlk::objs::Rebuild::Always );
+        }
+    }
+    else
+    {
+        // The swapchain is out of date.
+        return this->rebuild_presentation( vlk::objs::Rebuild::Always );
     }
 
     return utils::success( );

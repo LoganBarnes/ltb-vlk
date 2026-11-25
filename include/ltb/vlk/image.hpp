@@ -5,14 +5,19 @@
 
 // project
 #include "ltb/utils/result.hpp"
+#include "ltb/utils/types.hpp"
 #include "ltb/vlk/fwd.hpp"
 #include "ltb/vlk/vulkan.hpp"
+
+// standard
+#include <vector>
 
 namespace ltb::vlk
 {
 
 struct ImageSettings
 {
+    vk::ImageCreateFlags    flags          = { };
     vk::ImageType           image_type     = vk::ImageType::e2D;
     vk::Extent3D            extent         = { };
     uint32_t                mip_levels     = 1;
@@ -23,6 +28,10 @@ struct ImageSettings
     vk::ImageUsageFlags     usage          = vk::ImageUsageFlagBits::eTransferDst;
     vk::SharingMode         sharing_mode   = vk::SharingMode::eExclusive;
     vk::SampleCountFlagBits samples        = vk::SampleCountFlagBits::e1;
+
+    /// \brief The queue families that will access the image. Only used (and required, with
+    ///        at least two unique families) when `sharing_mode` is `eConcurrent`.
+    std::vector< uint32 > queue_family_indices = { };
 };
 
 class Image

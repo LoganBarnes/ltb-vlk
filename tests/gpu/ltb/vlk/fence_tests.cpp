@@ -24,7 +24,7 @@ TEST_F( FenceTest, DefaultFenceStartsSignaled )
 TEST_F( FenceTest, FenceCreatedWithoutFlagsStartsUnsignaled )
 {
     auto fence = Fence{ gpu_.device( ) };
-    ASSERT_TRUE( fence.initialize( FenceSettings{ .flags = { } } ).has_value( ) );
+    ASSERT_TRUE( fence.initialize( FenceSettings{ .flags = {} } ).has_value( ) );
 
     EXPECT_EQ( gpu_.device( ).get( ).getFenceStatus( fence.get( ) ), vk::Result::eNotReady );
 }

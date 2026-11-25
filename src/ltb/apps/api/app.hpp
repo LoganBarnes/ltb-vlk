@@ -167,6 +167,9 @@ private:
     auto set_camera_buffers( ) -> utils::Result< ApiApp* >;
     auto initialize_vertex_buffer( ) -> utils::Result< ApiApp* >;
 
+    /// \brief Waits for the GPU, then recreates the swapchain and everything built on it.
+    auto rebuild_swapchain( ) -> utils::Result< void >;
+
     struct FrameInfo
     {
         vk::CommandBuffer command_buffer;

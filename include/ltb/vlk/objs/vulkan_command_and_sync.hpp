@@ -42,6 +42,12 @@ struct SemaphoreAndStage
     vk::PipelineStageFlags stage     = vk::PipelineStageFlagBits::eNone;
 };
 
+enum class SwapchainStatus
+{
+    UpToDate,
+    NeedsRebuild,
+};
+
 class VulkanCommandAndSync
 {
 public:
@@ -52,6 +58,14 @@ public:
     [[nodiscard( "Const getter" )]]
     auto is_initialized( ) const -> bool;
 
+    /// \brief Waits for this frame slot's previous work, then acquires the next swapchain image.
+    ///
+    /// Returns `std::nullopt` if the swapchain is out of date; rebuild it (e.g.
+    /// `VulkanPresentation::rebuild( { .rebuild = Rebuild::Always } )`) and try again next frame.
+    ///
+    /// If a frame is returned, its `image_semaphore` will be signaled, so the frame must be
+    /// submitted with `end_frame`. An error between `start_frame` and `end_frame` leaves the
+    /// semaphore signaled and the frame slot unusable, so treat it as fatal.
     auto start_frame( Swapchain const& swapchain ) -> utils::Result< std::optional< FrameInfo > >;
     auto start_frame( Swapchain const& swapchain, ResetCommandBuffer reset_command_buffer )
         -> utils::Result< std::optional< FrameInfo > >;
@@ -74,11 +88,13 @@ public:
         vk::Queue const&                        submit_queue
     ) -> utils::Result< void >;
 
+    /// \brief Presents the frame's swapchain image. `NeedsRebuild` means the swapchain no
+    ///        longer matches the surface (out of date or suboptimal) and should be rebuilt.
     auto present_frame(
         FrameInfo const& frame,
         Swapchain const& swapchain,
         vk::Queue const& present_queue
-    ) -> utils::Result< void >;
+    ) -> utils::Result< SwapchainStatus >;
 
     auto increment_frame( ) -> void;
 

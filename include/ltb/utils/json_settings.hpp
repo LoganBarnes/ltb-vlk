@@ -118,7 +118,12 @@ JsonSettings< T >::~JsonSettings( )
             }
             catch ( std::exception const& e )
             {
-                spdlog::error( "Failed to save JSON '{}' to '{}': {}", name_, file_.string( ), e.what( ) );
+                spdlog::error(
+                    "Failed to save JSON '{}' to '{}': {}",
+                    name_,
+                    file_.string( ),
+                    e.what( )
+                );
             }
         }
     }
@@ -163,7 +168,7 @@ auto JsonSettings< T >::load_settings( std::filesystem::path optional_path_overr
 
         constexpr auto no_callback      = nullptr;
         constexpr auto allow_exceptions = false;
-        auto const json = nlohmann::json::parse( file, no_callback, allow_exceptions );
+        auto const     json = nlohmann::json::parse( file, no_callback, allow_exceptions );
 
         if ( json.is_discarded( ) )
         {
@@ -182,7 +187,8 @@ auto JsonSettings< T >::load_settings( std::filesystem::path optional_path_overr
             }
             catch ( nlohmann::json::exception const& e )
             {
-                spdlog::warn( "JSON '{}' not loaded from '{}': {}", name_, path.string( ), e.what( ) );
+                spdlog::
+                    warn( "JSON '{}' not loaded from '{}': {}", name_, path.string( ), e.what( ) );
                 return;
             }
         }

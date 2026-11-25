@@ -118,19 +118,50 @@ auto Instance::initialize( InstanceSettings settings, window::GlfwContext const*
         );
     }
 
-    auto const create_info = vk::InstanceCreateInfo( )
-                                 .setFlags( settings.flags )
-                                 .setPApplicationInfo( &app_info )
-                                 .setPEnabledExtensionNames( extensions )
-                                 .setPEnabledLayerNames( settings.layers )
-                                 .setPNext( debug_create_info );
+    auto create_info = vk::InstanceCreateInfo( )
+                           .setFlags( settings.flags )
+                           .setPApplicationInfo( &app_info )
+                           .setPEnabledExtensionNames( extensions )
+                           .setPEnabledLayerNames( settings.layers );
+
+    // The debug messenger structs are only valid if VK_EXT_debug_utils is enabled.
+    auto const debug_utils_enabled
+        = std::ranges::any_of( extensions, SameExtensionName{ VK_EXT_DEBUG_UTILS_EXTENSION_NAME } );
+
+    if ( debug_utils_enabled )
+    {
+        // Reports messages from instance creation and destruction.
+        create_info.setPNext( &debug_create_info );
+    }
 
     VK_CHECK( auto instance, vk::createInstanceUnique( create_info ) );
     spdlog::debug( "vk::createInstanceUnique()" );
 
-    app_info_ = app_info;
-    settings_ = std::move( settings );
-    instance_ = std::move( instance );
+    auto debug_dispatcher = std::unique_ptr< vk::detail::DispatchLoaderDynamic >{ };
+    auto debug_messenger  = DebugMessenger{ };
+
+    if ( debug_utils_enabled )
+    {
+        // Reports messages for the lifetime of the instance. The function is an extension
+        // so it has to be loaded at runtime.
+        debug_dispatcher = std::make_unique<
+            vk::detail::DispatchLoaderDynamic >( instance.get( ), vkGetInstanceProcAddr );
+        VK_CHECK(
+            debug_messenger,
+            instance->createDebugUtilsMessengerEXTUnique(
+                debug_create_info,
+                nullptr,
+                *debug_dispatcher
+            )
+        );
+        spdlog::debug( "vk::createDebugUtilsMessengerEXTUnique()" );
+    }
+
+    app_info_         = app_info;
+    settings_         = std::move( settings );
+    instance_         = std::move( instance );
+    debug_dispatcher_ = std::move( debug_dispatcher );
+    debug_messenger_  = std::move( debug_messenger );
 
     // Point at the stored string since the original may have been moved (short strings).
     app_info_.setPApplicationName( settings_.app_name.c_str( ) );

@@ -26,12 +26,21 @@ auto Buffer::initialize( BufferSettings settings ) -> utils::Result< void >
         return utils::success( );
     }
     LTB_CHECK_VALID( device_.is_initialized( ) );
+    LTB_CHECK_VALID(
+        ( vk::SharingMode::eConcurrent != settings.sharing_mode )
+            || ( settings.queue_family_indices.size( ) > 1U ),
+        "concurrent sharing needs at least two queue family indices"
+    );
 
-    auto const buffer_info = vk::BufferCreateInfo{ }
-                                 .setSize( settings.size )
-                                 .setUsage( settings.usage )
-                                 .setSharingMode( settings.sharing_mode )
-                                 .setFlags( settings.flags );
+    auto buffer_info = vk::BufferCreateInfo{ }
+                           .setSize( settings.size )
+                           .setUsage( settings.usage )
+                           .setSharingMode( settings.sharing_mode )
+                           .setFlags( settings.flags );
+    if ( vk::SharingMode::eConcurrent == settings.sharing_mode )
+    {
+        buffer_info.setQueueFamilyIndices( settings.queue_family_indices );
+    }
 
     VK_CHECK( auto buffer, device_.get( ).createBufferUnique( buffer_info ) );
     spdlog::debug( "vk::createBufferUnique()" );

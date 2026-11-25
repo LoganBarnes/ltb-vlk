@@ -39,18 +39,17 @@ TEST( AppendPushConstantRangeTests, LaterRangesStartAfterThePreviousRange )
     auto ranges = std::vector< vk::PushConstantRange >{ };
 
     append_push_constant_range< VertexPushConstants >( ranges, vk::ShaderStageFlagBits::eVertex );
-    append_push_constant_range< FragmentPushConstants >(
-        ranges,
-        vk::ShaderStageFlagBits::eFragment
-    );
-    append_push_constant_range< FragmentPushConstants >(
-        ranges,
-        vk::ShaderStageFlagBits::eFragment
-    );
+    append_push_constant_range<
+        FragmentPushConstants >( ranges, vk::ShaderStageFlagBits::eFragment );
+    append_push_constant_range<
+        FragmentPushConstants >( ranges, vk::ShaderStageFlagBits::eFragment );
 
     ASSERT_EQ( ranges.size( ), 3U );
     EXPECT_EQ( ranges[ 1 ].offset, sizeof( VertexPushConstants ) );
-    EXPECT_EQ( ranges[ 2 ].offset, sizeof( VertexPushConstants ) + sizeof( FragmentPushConstants ) );
+    EXPECT_EQ(
+        ranges[ 2 ].offset,
+        sizeof( VertexPushConstants ) + sizeof( FragmentPushConstants )
+    );
 }
 
 } // namespace

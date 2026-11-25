@@ -122,10 +122,14 @@ auto ObjsApp::frame_update( exec::UpdateLoopStatus const& status ) -> exec::Upda
 auto ObjsApp::on_resize( glm::ivec2 const size ) -> utils::Result< void >
 {
     utils::ignore( size );
+    return this->rebuild_presentation( vlk::objs::Rebuild::IfSizeChanged );
+}
 
+auto ObjsApp::rebuild_presentation( vlk::objs::Rebuild const rebuild ) -> utils::Result< void >
+{
     VK_CHECK( gpu_.device( ).get( ).waitIdle( ) );
 
-    LTB_CHECK( presentation_.rebuild( { } ) );
+    LTB_CHECK( presentation_.rebuild( { .rebuild = rebuild } ) );
     LTB_CHECK( this->set_camera_buffers( ) );
 
     return utils::success( );
@@ -155,10 +159,14 @@ auto ObjsApp::initialize_gpu_presentation( ) -> utils::Result< ObjsApp* >
 
 auto ObjsApp::initialize_camera_buffers( ) -> utils::Result< ObjsApp* >
 {
+    // Each frame's range is bound with its own descriptor offset, which must be aligned.
+    auto const ubo_alignment
+        = gpu_.physical_device( ).properties( ).limits.minUniformBufferOffsetAlignment;
+
     auto camera_buffer_layout = vlk::MemoryLayout{ };
     vlk::append_memory_size_n(
         camera_buffer_layout,
-        sizeof( cam::CameraRenderParams ),
+        { sizeof( cam::CameraRenderParams ), ubo_alignment },
         exec::max_frames_in_flight
     );
 
@@ -262,16 +270,25 @@ auto ObjsApp::render( ) -> utils::Result< void >
 {
     LTB_CHECK( auto const maybe_frame, cmd_and_sync_.start_frame( presentation_.swapchain( ) ) );
 
-    if ( maybe_frame.has_value( ) )
+    if ( !maybe_frame.has_value( ) )
     {
-        auto const& frame = maybe_frame.value( );
+        // The swapchain is out of date.
+        return this->rebuild_presentation( vlk::objs::Rebuild::Always );
+    }
 
-        LTB_CHECK( this->record_render_commands( frame ) );
-        LTB_CHECK( cmd_and_sync_.end_frame( frame, graphics_queue_ ) );
-        LTB_CHECK(
-            cmd_and_sync_.present_frame( frame, presentation_.swapchain( ), present_queue_ )
-        );
-        cmd_and_sync_.increment_frame( );
+    auto const& frame = maybe_frame.value( );
+
+    LTB_CHECK( this->record_render_commands( frame ) );
+    LTB_CHECK( cmd_and_sync_.end_frame( frame, graphics_queue_ ) );
+    LTB_CHECK(
+        auto const swapchain_status,
+        cmd_and_sync_.present_frame( frame, presentation_.swapchain( ), present_queue_ )
+    );
+    cmd_and_sync_.increment_frame( );
+
+    if ( vlk::objs::SwapchainStatus::NeedsRebuild == swapchain_status )
+    {
+        return this->rebuild_presentation( vlk::objs::Rebuild::Always );
     }
     return utils::success( );
 }

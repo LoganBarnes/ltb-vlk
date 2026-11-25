@@ -12,7 +12,9 @@
 #include <spdlog/spdlog.h>
 
 // standard
+#include <algorithm>
 #include <ranges>
+#include <string_view>
 
 namespace ltb::vlk
 {
@@ -68,6 +70,27 @@ auto Device::initialize( ) -> utils::Result< void >
 
     auto enable_fifo_latest_ready = vk::PhysicalDevicePresentModeFifoLatestReadyFeaturesKHR{ true };
 
+    // Compare names by value; the extension list may hold different copies of the string.
+    auto const fifo_latest_ready_extension_enabled = std::ranges::
+        any_of( physical_device_.extensions( ), []( char const* const extension ) -> bool {
+            return std::string_view{ extension }
+                == VK_KHR_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME;
+        } );
+
+    // The extension being available doesn't mean the GPU supports the feature.
+    auto fifo_latest_ready_supported = false;
+    if ( fifo_latest_ready_extension_enabled )
+    {
+        auto const features = physical_device_.get( )
+                                  .getFeatures2<
+                                      vk::PhysicalDeviceFeatures2,
+                                      vk::PhysicalDevicePresentModeFifoLatestReadyFeaturesKHR >( );
+        fifo_latest_ready_supported
+            = ( vk::True
+                == features.get< vk::PhysicalDevicePresentModeFifoLatestReadyFeaturesKHR >( )
+                       .presentModeFifoLatestReady );
+    }
+
     auto  device_features_2 = vk::PhysicalDeviceFeatures2{ };
     auto& device_features   = device_features_2.features;
 
@@ -76,11 +99,7 @@ auto Device::initialize( ) -> utils::Result< void >
         ( device_features.*feature ) = true;
     }
 
-    if ( std::ranges::find(
-             physical_device_.extensions( ),
-             VK_KHR_PRESENT_MODE_FIFO_LATEST_READY_EXTENSION_NAME
-         )
-         != physical_device_.extensions( ).end( ) )
+    if ( fifo_latest_ready_supported )
     {
         device_features_2.pNext = &enable_fifo_latest_ready;
     }
@@ -93,8 +112,9 @@ auto Device::initialize( ) -> utils::Result< void >
     VK_CHECK( auto device, physical_device_.get( ).createDeviceUnique( create_info ) );
     spdlog::debug( "vk::createDeviceUnique()" );
 
-    device_ = std::move( device );
-    queues_ = physical_device_.queue_families( )
+    device_                    = std::move( device );
+    fifo_latest_ready_enabled_ = fifo_latest_ready_supported;
+    queues_                    = physical_device_.queue_families( )
             | std::ranges::views::transform( MakeQueuePair{ device_ } )
             | std::ranges::to< QueueMap >( );
 
@@ -124,6 +144,11 @@ auto Device::physical_device( ) const -> PhysicalDevice const&
 auto Device::queues( ) const -> QueueMap const&
 {
     return queues_;
+}
+
+auto Device::fifo_latest_ready_enabled( ) const -> bool
+{
+    return fifo_latest_ready_enabled_;
 }
 
 } // namespace ltb::vlk

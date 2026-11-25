@@ -89,6 +89,8 @@ private:
     auto update_compute_uniforms( vlk::objs::FrameInfo const& frame ) -> utils::Result< void >;
     auto record_compute_commands( vlk::objs::FrameInfo const& frame ) -> utils::Result< void >;
 
+    auto rebuild_presentation( vlk::objs::Rebuild rebuild ) -> utils::Result< void >;
+
     auto render( ) -> utils::Result< void >;
     auto update_camera_uniforms( vlk::objs::FrameInfo const& frame ) -> utils::Result< void >;
     auto record_render_commands( vlk::objs::FrameInfo const& frame ) -> utils::Result< void >;

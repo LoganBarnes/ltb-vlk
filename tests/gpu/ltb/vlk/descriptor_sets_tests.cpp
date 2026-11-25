@@ -20,9 +20,9 @@ TEST_F( DescriptorSetsTest, ResetReturnsSetsToThePool )
     // A pool that only has room for one set at a time.
     auto pool = DescriptorPool{ gpu_.device( ) };
     ASSERT_TRUE( pool.initialize( {
-                         .pool_sizes = { { vk::DescriptorType::eUniformBuffer, 1U } },
-                         .max_sets   = 1U,
-                     } )
+                                      .pool_sizes = { { vk::DescriptorType::eUniformBuffer, 1U } },
+                                      .max_sets   = 1U,
+                                  } )
                      .has_value( ) );
 
     auto layout = DescriptorSetLayout{ gpu_.device( ) };
