@@ -7,7 +7,11 @@
 #include "ltb/utils/ignore.hpp"
 
 // system
+#if defined( _WIN32 )
+#include <process.h>
+#else
 #include <unistd.h>
+#endif
 
 // standard
 #include <algorithm>
@@ -31,14 +35,13 @@ extern "C" auto handle_stop_signal( int const signal ) -> void
 
 } // namespace
 
-auto shared_image_settings( vk::Extent2D const extent ) -> vlk::ImageSettings
+auto shared_image_settings( vk::Extent2D const extent ) -> vlk::SharedImageSettings
 {
     return {
-        .extent = { extent.width, extent.height, 1U },
+        .extent = extent,
         .format = shared_image_format,
         // The producer renders into it, and the display copies out of it.
         .usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
-        .external_memory_handle_types = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd,
     };
 }
 
@@ -67,18 +70,13 @@ auto peek_message_type( std::span< std::byte const > const bytes ) -> std::optio
     return type;
 }
 
-auto default_socket_path( ) -> std::filesystem::path
+auto current_process_id( ) -> int32
 {
-    constexpr auto file_name = "ltb-vlk-share.sock";
-
-    // The standard per-user directory for sockets on Linux.
-    if ( auto const* const runtime_dir = std::getenv( "XDG_RUNTIME_DIR" );
-         ( nullptr != runtime_dir ) && ( '\0' != runtime_dir[ 0 ] ) )
-    {
-        return std::filesystem::path{ runtime_dir } / file_name;
-    }
-    return std::filesystem::temp_directory_path( )
-         / ( "ltb-vlk-share-" + std::to_string( ::getuid( ) ) + ".sock" );
+#if defined( _WIN32 )
+    return static_cast< int32 >( ::_getpid( ) );
+#else
+    return static_cast< int32 >( ::getpid( ) );
+#endif
 }
 
 auto install_stop_signal_handlers( ) -> void

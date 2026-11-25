@@ -60,59 +60,6 @@ auto would_block( int const error ) -> bool
 } // namespace
 
 // ---------------------------------------------------------------------------------------
-// FileDescriptor
-// ---------------------------------------------------------------------------------------
-
-FileDescriptor::FileDescriptor( int const fd )
-    : fd_( fd )
-{
-}
-
-FileDescriptor::~FileDescriptor( )
-{
-    this->reset( );
-}
-
-FileDescriptor::FileDescriptor( FileDescriptor&& other ) noexcept
-    : fd_( other.release( ) )
-{
-}
-
-auto FileDescriptor::operator=( FileDescriptor&& other ) noexcept -> FileDescriptor&
-{
-    if ( this != &other )
-    {
-        this->reset( );
-        fd_ = other.release( );
-    }
-    return *this;
-}
-
-auto FileDescriptor::get( ) const -> int
-{
-    return fd_;
-}
-
-auto FileDescriptor::is_valid( ) const -> bool
-{
-    return fd_ >= 0;
-}
-
-auto FileDescriptor::release( ) -> int
-{
-    return std::exchange( fd_, -1 );
-}
-
-auto FileDescriptor::reset( ) -> void
-{
-    if ( this->is_valid( ) )
-    {
-        ::close( fd_ );
-        fd_ = -1;
-    }
-}
-
-// ---------------------------------------------------------------------------------------
 // UnixSocket
 // ---------------------------------------------------------------------------------------
 
@@ -252,7 +199,7 @@ auto UnixSocket::send(
 {
     LTB_CHECK_VALID( this->is_valid( ) );
     LTB_CHECK_VALID( !bytes.empty( ), "messages can't be empty" );
-    LTB_CHECK_VALID( fds.size( ) <= max_fds_per_message );
+    LTB_CHECK_VALID( fds.size( ) <= max_handles_per_message );
 
     auto io_vector = iovec{
         .iov_base = const_cast< std::byte* >( bytes.data( ) ),
@@ -265,7 +212,7 @@ auto UnixSocket::send(
 
     // Ancillary data carrying the file descriptors (SCM_RIGHTS).
     alignas( cmsghdr ) auto control
-        = std::array< std::byte, CMSG_SPACE( sizeof( int ) * max_fds_per_message ) >{ };
+        = std::array< std::byte, CMSG_SPACE( sizeof( int ) * max_handles_per_message ) >{ };
     if ( !fds.empty( ) )
     {
         auto const fds_size    = sizeof( int ) * fds.size( );
@@ -305,7 +252,7 @@ auto UnixSocket::receive( std::span< std::byte > const buffer ) const
     };
 
     alignas( cmsghdr ) auto control
-        = std::array< std::byte, CMSG_SPACE( sizeof( int ) * max_fds_per_message ) >{ };
+        = std::array< std::byte, CMSG_SPACE( sizeof( int ) * max_handles_per_message ) >{ };
 
     auto message           = msghdr{ };
     message.msg_iov        = &io_vector;
@@ -339,7 +286,7 @@ auto UnixSocket::receive( std::span< std::byte > const buffer ) const
             {
                 auto fd = -1;
                 std::memcpy( &fd, CMSG_DATA( header ) + ( i * sizeof( int ) ), sizeof( int ) );
-                result.message.fds.emplace_back( fd );
+                result.message.handles.emplace_back( fd );
             }
         }
     }

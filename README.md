@@ -82,9 +82,16 @@ socket (`SCM_RIGHTS`), and the display imports the memory and draws every produc
 * `--socket <path>` picks the socket (default `$XDG_RUNTIME_DIR/ltb-vlk-share.sock`). Ctrl+C
   shuts either mode down cleanly.
 
-The reusable pieces live in the library: `ltb/ipc/unix_socket.hpp` (passing file
-descriptors), and `export_handle_types`, `import_fd` and `DeviceMemory::export_fd()` for
-external memory.
+The app only uses two platform-neutral library interfaces, so supporting another platform
+means adding a backend for each, without changing the app:
+
+| Interface | What it does | Linux backend | Windows (planned) | macOS (planned) |
+|:--|:--|:--|:--|:--|
+| `vlk::SharedImage` (`ltb/vlk/shared_image.hpp`) | Create, export and import images with shared memory | Opaque fds (`VK_KHR_external_memory_fd`) | NT handles (`VK_KHR_external_memory_win32`) | IOSurfaces (`VK_EXT_metal_objects`) |
+| `ipc::Channel` (`ltb/ipc/channel.hpp`) | Send messages and native handles between processes | Unix socket + `SCM_RIGHTS` | Named pipe + `DuplicateHandle` | Mach messages / XPC |
+
+Each header documents what a new backend has to implement. Only the Linux backends exist
+today, so `share-app` is built on Linux only.
 
 ### Useful References
 

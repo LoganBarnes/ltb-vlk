@@ -5,22 +5,20 @@
 
 // project
 #include "ltb/exec/update_loop.hpp"
-#include "ltb/ipc/unix_socket.hpp"
+#include "ltb/ipc/channel.hpp"
 #include "ltb/vlk/command_buffer.hpp"
 #include "ltb/vlk/command_pool.hpp"
-#include "ltb/vlk/device_memory.hpp"
 #include "ltb/vlk/fence.hpp"
 #include "ltb/vlk/framebuffer.hpp"
-#include "ltb/vlk/image.hpp"
 #include "ltb/vlk/image_view.hpp"
 #include "ltb/vlk/objs/vulkan_gpu.hpp"
 #include "ltb/vlk/objs/vulkan_graphics_pipeline.hpp"
 #include "ltb/vlk/render_pass.hpp"
+#include "ltb/vlk/shared_image.hpp"
 
 // standard
 #include <chrono>
 #include <deque>
-#include <filesystem>
 #include <optional>
 
 namespace ltb::share
@@ -28,7 +26,8 @@ namespace ltb::share
 
 struct ProducerSettings
 {
-    std::filesystem::path socket_path = { };
+    /// \brief Where the display is listening.
+    ipc::ChannelAddress display_address = { };
 
     /// \brief The size of the rendered images.
     vk::Extent2D extent = { 512U, 512U };
@@ -64,10 +63,9 @@ private:
     {
         explicit ImageSlot( vlk::Device& device, vlk::RenderPass& render_pass );
 
-        vlk::Image        image;
-        vlk::DeviceMemory memory;
-        vlk::ImageView    view;
-        vlk::Framebuffer  framebuffer;
+        vlk::SharedImage shared;
+        vlk::ImageView   view;
+        vlk::Framebuffer framebuffer;
 
         /// \brief True from when the frame is sent until the display releases it.
         bool shared_with_display = false;
@@ -89,7 +87,7 @@ private:
     vlk::CommandBuffer command_buffer_ = { gpu_.device( ), command_pool_ };
     vlk::Fence         render_fence_   = { gpu_.device( ) };
 
-    ipc::UnixSocket socket_ = { };
+    ipc::Channel display_ = { };
 
     Clock::time_point start_time_      = { };
     Clock::time_point next_frame_time_ = { };

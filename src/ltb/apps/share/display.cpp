@@ -55,7 +55,7 @@ auto image_barrier(
 /// \brief Validates a producer's hello before importing anything.
 auto check_hello(
     HelloMessage const&        hello,
-    std::size_t const          fd_count,
+    std::size_t const          handle_count,
     vlk::DeviceIdentity const& display_device
 ) -> utils::Result< void >
 {
@@ -66,9 +66,21 @@ auto check_hello(
         "the producer was built with a different protocol version"
     );
     LTB_CHECK_VALID( ( hello.slot_count > 0U ) && ( hello.slot_count <= 4U ) );
-    LTB_CHECK_VALID( hello.slot_count == fd_count, "expected one memory fd per image slot" );
-    LTB_CHECK_VALID( ( hello.width > 0U ) && ( hello.width <= max_image_dimension ) );
-    LTB_CHECK_VALID( ( hello.height > 0U ) && ( hello.height <= max_image_dimension ) );
+    LTB_CHECK_VALID(
+        hello.slot_count == handle_count,
+        "expected one memory handle per image slot"
+    );
+
+    auto const& image = hello.image.settings;
+    LTB_CHECK_VALID( ( image.extent.width > 0U ) && ( image.extent.width <= max_image_dimension ) );
+    LTB_CHECK_VALID(
+        ( image.extent.height > 0U ) && ( image.extent.height <= max_image_dimension )
+    );
+    LTB_CHECK_VALID( shared_image_format == image.format, "unexpected image format" );
+    LTB_CHECK_VALID(
+        static_cast< bool >( image.usage & vk::ImageUsageFlagBits::eTransferSrc ),
+        "the display copies from the images, so they need transfer-source usage"
+    );
     LTB_CHECK_VALID(
         hello.device == display_device,
         "the producer is rendering on a different GPU or driver, so its memory can't be shared"
@@ -78,19 +90,13 @@ auto check_hello(
 
 } // namespace
 
-ShareDisplay::ImportedSlot::ImportedSlot( vlk::Device& device )
-    : image( device )
-    , memory( device )
-{
-}
-
 ShareDisplay::Producer::Producer(
     vlk::objs::VulkanGpu& gpu,
-    ipc::UnixSocket       connection,
+    ipc::Channel          connection,
     uint64 const          producer_id
 )
     : id( producer_id )
-    , socket( std::move( connection ) )
+    , channel( std::move( connection ) )
     , texture( gpu )
     , texture_view( gpu.device( ) )
 {
@@ -116,9 +122,12 @@ auto ShareDisplay::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
     LTB_CHECK_VALID( glfw_context_.is_initialized( ) );
     LTB_CHECK_VALID( glfw_window_.is_initialized( ) );
 
-    // The default extensions (swapchain) plus importing memory from file descriptors.
+    // The default extensions (swapchain) plus sharing image memory between processes.
     auto gpu_settings = vlk::objs::VulkanGpuSettings{ };
-    gpu_settings.device.extensions.push_back( VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME );
+    std::ranges::copy(
+        vlk::shared_image_device_extensions( ),
+        std::back_inserter( gpu_settings.device.extensions )
+    );
     LTB_CHECK( gpu_.initialize( std::move( gpu_settings ) ) );
     spdlog::
         info( "Displaying on {}", std::string{ gpu_.physical_device( ).properties( ).deviceName } );
@@ -133,10 +142,10 @@ auto ShareDisplay::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
     LTB_CHECK( presentation_.initialize( { } ) );
     LTB_CHECK( this->initialize_graphics( ) );
 
-    LTB_CHECK( listener_, ipc::UnixSocket::listen( settings_.socket_path ) );
+    LTB_CHECK( listener_, ipc::ChannelListener::listen( settings_.address ) );
     spdlog::info(
         "Waiting for producers at '{}'. Start them with --share (and the same --socket).",
-        settings_.socket_path.string( )
+        settings_.address
     );
 
     initialized_ = true;
@@ -174,7 +183,7 @@ auto ShareDisplay::frame_update( exec::UpdateLoopStatus const& status ) -> exec:
             spdlog::warn( "Disconnecting producer {}: {}", producer.id, reason );
 
             // Tell the producer why, so it can report it. Best effort: it may already be gone.
-            utils::ignore( producer.socket.send_value( make_rejected_message( reason ) ) );
+            utils::ignore( producer.channel.send_value( make_rejected_message( reason ) ) );
             producer.disconnected = true;
         }
     }
@@ -291,7 +300,7 @@ auto ShareDisplay::receive_messages( Producer& producer ) -> utils::Result< void
 
     while ( !producer.disconnected )
     {
-        LTB_CHECK( auto received, producer.socket.receive( buffer ) );
+        LTB_CHECK( auto received, producer.channel.receive( buffer ) );
 
         if ( ipc::ReceiveStatus::WouldBlock == received.status )
         {
@@ -312,7 +321,9 @@ auto ShareDisplay::receive_messages( Producer& producer ) -> utils::Result< void
             LTB_CHECK_VALID( !producer.hello.has_value( ), "received a second hello" );
             auto const hello = read_message< HelloMessage >( bytes, MessageType::Hello );
             LTB_CHECK_VALID( hello.has_value( ), "malformed hello" );
-            LTB_CHECK( this->import_producer( producer, hello.value( ), received.message.fds ) );
+            LTB_CHECK(
+                this->import_producer( producer, hello.value( ), received.message.handles )
+            );
         }
         else if ( MessageType::FrameReady == type )
         {
@@ -339,40 +350,22 @@ auto ShareDisplay::receive_messages( Producer& producer ) -> utils::Result< void
 }
 
 auto ShareDisplay::import_producer(
-    Producer&                           producer,
-    HelloMessage const&                 hello,
-    std::vector< ipc::FileDescriptor >& fds
+    Producer&                         producer,
+    HelloMessage const&               hello,
+    std::vector< ipc::NativeHandle >& handles
 ) -> utils::Result< void >
 {
-    LTB_CHECK( check_hello( hello, fds.size( ), gpu_.physical_device( ).identity( ) ) );
+    LTB_CHECK( check_hello( hello, handles.size( ), gpu_.physical_device( ).identity( ) ) );
 
     auto const free_tile = std::ranges::find( tile_in_use_, false );
     LTB_CHECK_VALID( tile_in_use_.end( ) != free_tile, "the display is full" );
 
-    auto const extent = vk::Extent2D{ hello.width, hello.height };
+    auto const extent = hello.image.settings.extent;
 
-    for ( auto& fd : fds )
+    for ( auto& handle : handles )
     {
         auto& slot = producer.slots.emplace_back( gpu_.device( ) );
-
-        // Same settings as the producer's image, so the imported memory matches its layout.
-        LTB_CHECK( slot.image.initialize( shared_image_settings( extent ) ) );
-
-        auto const requirements = slot.image.memory_requirements( );
-        LTB_CHECK_VALID( ( requirements.memoryTypeBits >> hello.memory_type_index ) & 1U );
-        LTB_CHECK_VALID( requirements.size <= hello.allocation_size );
-
-        LTB_CHECK( slot.memory.initialize( {
-            .allocation_size   = hello.allocation_size,
-            .memory_type_index = hello.memory_type_index,
-            .import_fd         = fd.get( ),
-            .dedicated_image   = slot.image.get( ),
-        } ) );
-        fd.release( ); // Vulkan owns the descriptor once the import succeeds.
-
-        VK_CHECK(
-            gpu_.device( ).get( ).bindImageMemory( slot.image.get( ), slot.memory.get( ), 0U )
-        );
+        LTB_CHECK( slot.import( hello.image, std::move( handle ) ) );
     }
 
     LTB_CHECK( producer.texture.initialize( {
@@ -413,8 +406,8 @@ auto ShareDisplay::import_producer(
         "Producer {} (process {}) connected: {}x{}",
         producer.id,
         hello.process_id,
-        hello.width,
-        hello.height
+        hello.image.settings.extent.width,
+        hello.image.settings.extent.height
     );
     return utils::success( );
 }
@@ -449,7 +442,7 @@ auto ShareDisplay::send_release( Producer const& producer, uint32 const slot ) -
     {
         return;
     }
-    auto const sent = producer.socket.send_value(
+    auto const sent = producer.channel.send_value(
         FrameMessage{
             .type = MessageType::SlotReleased,
             .slot = slot,
@@ -528,7 +521,7 @@ auto ShareDisplay::record_copies( vlk::objs::FrameInfo const& frame ) -> void
             continue;
         }
         auto const  slot_index = producer.ready_slot.value( );
-        auto const& shared     = producer.slots[ slot_index ].image;
+        auto const& shared     = producer.slots[ slot_index ].image( );
         auto const& texture    = producer.texture.image( );
 
         // Take ownership of the producer's image (matching the producer's release).
@@ -653,7 +646,8 @@ auto ShareDisplay::record_tiles( vlk::objs::FrameInfo const& frame ) -> void
 
         // Fit the producer's image in its cell, keeping its aspect ratio.
         constexpr auto margin     = 0.94F;
-        auto const     image_size = glm::vec2( producer.hello->width, producer.hello->height );
+        auto const&    extent     = producer.hello->image.settings.extent;
+        auto const     image_size = glm::vec2( extent.width, extent.height );
         auto const     fit = std::min( cell_size.x / image_size.x, cell_size.y / image_size.y );
         auto const     tile_size = image_size * fit * margin;
 

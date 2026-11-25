@@ -6,21 +6,19 @@
 // project
 #include "common.hpp"
 #include "ltb/exec/update_loop.hpp"
-#include "ltb/ipc/unix_socket.hpp"
-#include "ltb/vlk/device_memory.hpp"
-#include "ltb/vlk/image.hpp"
+#include "ltb/ipc/channel.hpp"
 #include "ltb/vlk/image_view.hpp"
 #include "ltb/vlk/objs/vulkan_command_and_sync.hpp"
 #include "ltb/vlk/objs/vulkan_gpu.hpp"
 #include "ltb/vlk/objs/vulkan_graphics_pipeline.hpp"
 #include "ltb/vlk/objs/vulkan_image.hpp"
 #include "ltb/vlk/objs/vulkan_presentation.hpp"
+#include "ltb/vlk/shared_image.hpp"
 #include "ltb/window/fwd.hpp"
 
 // standard
 #include <array>
 #include <deque>
-#include <filesystem>
 #include <list>
 #include <optional>
 #include <vector>
@@ -30,7 +28,8 @@ namespace ltb::share
 
 struct DisplaySettings
 {
-    std::filesystem::path socket_path = { };
+    /// \brief Where to listen for producers.
+    ipc::ChannelAddress address = { };
 };
 
 /// \brief Opens a window and shows the latest frame from every connected producer, each in
@@ -55,26 +54,18 @@ public:
     auto clean_up( ) -> utils::Result< void >;
 
 private:
-    /// \brief One of a producer's images, backed by memory imported from the producer.
-    struct ImportedSlot
-    {
-        explicit ImportedSlot( vlk::Device& device );
-
-        vlk::Image        image;
-        vlk::DeviceMemory memory;
-    };
-
     struct Producer
     {
-        Producer( vlk::objs::VulkanGpu& gpu, ipc::UnixSocket connection, uint64 producer_id );
+        Producer( vlk::objs::VulkanGpu& gpu, ipc::Channel connection, uint64 producer_id );
 
-        uint64          id;
-        ipc::UnixSocket socket;
+        uint64       id;
+        ipc::Channel channel;
 
         /// \brief Set once the producer has introduced itself and its memory was imported.
         std::optional< HelloMessage > hello = std::nullopt;
 
-        std::deque< ImportedSlot > slots = { };
+        /// \brief The producer's images, backed by memory imported from the producer.
+        std::deque< vlk::SharedImage > slots = { };
 
         /// \brief The display's own copy of the latest frame, which it samples when drawing.
         ///        Copying lets the producer keep rendering while the display draws.
@@ -113,7 +104,7 @@ private:
     vlk::objs::VulkanCommandAndSync   cmd_and_sync_ = { gpu_ };
     vk::UniqueSampler                 sampler_      = { };
 
-    ipc::UnixSocket listener_ = { };
+    ipc::ChannelListener listener_ = { };
 
     // A list keeps each producer in place (they hold references to the GPU).
     std::list< Producer >                        producers_         = { };
@@ -132,9 +123,9 @@ private:
     auto accept_connections( ) -> utils::Result< void >;
     auto receive_messages( Producer& producer ) -> utils::Result< void >;
     auto import_producer(
-        Producer&                           producer,
-        HelloMessage const&                 hello,
-        std::vector< ipc::FileDescriptor >& fds
+        Producer&                         producer,
+        HelloMessage const&               hello,
+        std::vector< ipc::NativeHandle >& handles
     ) -> utils::Result< void >;
     auto remove_disconnected_producers( ) -> utils::Result< void >;
     auto send_release( Producer const& producer, uint32 slot ) -> void;

@@ -4,6 +4,8 @@
 #pragma once
 
 // project
+#include "ltb/ipc/message.hpp"
+#include "ltb/ipc/native_handle.hpp"
 #include "ltb/utils/result.hpp"
 
 // standard
@@ -18,66 +20,9 @@
 namespace ltb::ipc
 {
 
-/// \brief Owns a POSIX file descriptor and closes it when destroyed.
-class FileDescriptor
-{
-public:
-    FileDescriptor( ) = default;
-    explicit FileDescriptor( int fd );
-    ~FileDescriptor( );
-
-    FileDescriptor( FileDescriptor const& )                    = delete;
-    auto operator=( FileDescriptor const& ) -> FileDescriptor& = delete;
-
-    FileDescriptor( FileDescriptor&& other ) noexcept;
-    auto operator=( FileDescriptor&& other ) noexcept -> FileDescriptor&;
-
-    [[nodiscard( "Const getter" )]]
-    auto get( ) const -> int;
-
-    [[nodiscard( "Const getter" )]]
-    auto is_valid( ) const -> bool;
-
-    /// \brief Gives up ownership without closing the descriptor.
-    auto release( ) -> int;
-
-    auto reset( ) -> void;
-
-private:
-    int fd_ = -1;
-};
-
-/// \brief What a non-blocking receive found.
-struct ReceivedMessage
-{
-    /// \brief The number of bytes written into the receive buffer.
-    std::size_t size = 0U;
-
-    /// \brief File descriptors sent along with the message.
-    std::vector< FileDescriptor > fds = { };
-};
-
-enum class ReceiveStatus
-{
-    Message, ///< A message was received.
-    WouldBlock, ///< Nothing to receive right now.
-    Closed, ///< The other end closed the connection.
-};
-
-enum class SendStatus
-{
-    Sent, ///< The message was sent.
-    Closed, ///< The other end closed the connection, so nothing was sent.
-};
-
-struct ReceiveResult
-{
-    ReceiveStatus   status  = ReceiveStatus::WouldBlock;
-    ReceivedMessage message = { };
-};
-
 /// \brief A non-blocking, message-based (SOCK_SEQPACKET) Unix domain socket that can also
-///        pass file descriptors to another process.
+///        pass file descriptors to another process. This is the Linux backend of `Channel`;
+///        prefer `Channel` in code that should work on other platforms too.
 class UnixSocket
 {
 public:
@@ -134,8 +79,5 @@ private:
     FileDescriptor        fd_         = { };
     std::filesystem::path owned_path_ = { };
 };
-
-/// \brief The largest number of file descriptors `UnixSocket::receive` accepts per message.
-inline constexpr auto max_fds_per_message = 16UZ;
 
 } // namespace ltb::ipc

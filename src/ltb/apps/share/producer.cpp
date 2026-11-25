@@ -11,9 +11,6 @@
 // external
 #include <spdlog/spdlog.h>
 
-// system
-#include <unistd.h>
-
 // standard
 #include <algorithm>
 #include <array>
@@ -43,8 +40,7 @@ auto color_subresource_range( ) -> vk::ImageSubresourceRange
 } // namespace
 
 ShareProducer::ImageSlot::ImageSlot( vlk::Device& device, vlk::RenderPass& render_pass )
-    : image( device )
-    , memory( device )
+    : shared( device )
     , view( device )
     , framebuffer( device, render_pass )
 {
@@ -62,9 +58,9 @@ auto ShareProducer::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
         return exec::UpdateLoopStatus{ };
     }
 
-    // Headless: no surface or swapchain, but the memory must be exportable as an fd.
+    // Headless: no surface or swapchain, but the images' memory must be shareable.
     LTB_CHECK( gpu_.initialize( {
-        .device = { .extensions = { VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME } },
+        .device = { .extensions = vlk::shared_image_device_extensions( ) },
     } ) );
     spdlog::
         info( "Rendering on {}", std::string{ gpu_.physical_device( ).properties( ).deviceName } );
@@ -223,29 +219,10 @@ auto ShareProducer::initialize_slots( ) -> utils::Result< void >
     {
         auto& slot = slots_.emplace_back( gpu_.device( ), render_pass_ );
 
-        LTB_CHECK( slot.image.initialize( shared_image_settings( settings_.extent ) ) );
-
-        auto const requirements = slot.image.memory_requirements( );
-        LTB_CHECK(
-            auto const memory_type_index,
-            gpu_.physical_device( ).find_memory_type_index(
-                { requirements },
-                vk::MemoryPropertyFlagBits::eDeviceLocal
-            )
-        );
-
-        LTB_CHECK( slot.memory.initialize( {
-            .allocation_size     = requirements.size,
-            .memory_type_index   = memory_type_index,
-            .export_handle_types = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd,
-            .dedicated_image     = slot.image.get( ),
-        } ) );
-        VK_CHECK(
-            gpu_.device( ).get( ).bindImageMemory( slot.image.get( ), slot.memory.get( ), 0U )
-        );
+        LTB_CHECK( slot.shared.create( shared_image_settings( settings_.extent ) ) );
 
         LTB_CHECK( slot.view.initialize( {
-            .image  = slot.image.get( ),
+            .image  = slot.shared.image( ).get( ),
             .format = shared_image_format,
         } ) );
         LTB_CHECK( slot.framebuffer.initialize( {
@@ -259,41 +236,36 @@ auto ShareProducer::initialize_slots( ) -> utils::Result< void >
 
 auto ShareProducer::connect_to_display( ) -> utils::Result< void >
 {
-    auto socket = ipc::UnixSocket::connect( settings_.socket_path );
-    if ( !socket )
+    auto channel = ipc::Channel::connect( settings_.display_address );
+    if ( !channel )
     {
         return LTB_MAKE_UNEXPECTED_ERROR(
             "Couldn't connect to a display at '{}'. Start one first with --display.\n{}",
-            settings_.socket_path.string( ),
-            socket.error( ).error_message( )
+            settings_.display_address,
+            channel.error( ).error_message( )
         );
     }
-    socket_ = std::move( socket.value( ) );
+    display_ = std::move( channel.value( ) );
 
-    // Export a new fd for each slot's memory. They're closed once sent; the display gets
-    // its own copies.
-    auto exported_fds = std::vector< ipc::FileDescriptor >{ };
-    auto raw_fds      = std::vector< int >{ };
+    // A new handle for each slot's memory. They're closed once sent; the display gets its
+    // own copies.
+    auto handles = std::vector< ipc::NativeHandle >{ };
     for ( auto const& slot : slots_ )
     {
-        LTB_CHECK( auto const fd, slot.memory.export_fd( ) );
-        raw_fds.push_back( exported_fds.emplace_back( fd ).get( ) );
+        LTB_CHECK( auto handle, slot.shared.export_handle( ) );
+        handles.push_back( std::move( handle ) );
     }
 
-    auto const& first_slot = slots_.front( );
     LTB_CHECK(
         auto const hello_status,
-        socket_.send_value(
+        display_.send_value(
             HelloMessage{
-                .width             = settings_.extent.width,
-                .height            = settings_.extent.height,
-                .slot_count        = static_cast< uint32 >( slots_.size( ) ),
-                .memory_type_index = first_slot.memory.settings( ).memory_type_index,
-                .allocation_size   = first_slot.memory.size( ),
-                .device            = gpu_.physical_device( ).identity( ),
-                .process_id        = static_cast< int32 >( ::getpid( ) ),
+                .slot_count = static_cast< uint32 >( slots_.size( ) ),
+                .image      = slots_.front( ).shared.info( ),
+                .device     = gpu_.physical_device( ).identity( ),
+                .process_id = current_process_id( ),
             },
-            raw_fds
+            handles
         )
     );
     LTB_CHECK_VALID(
@@ -301,7 +273,7 @@ auto ShareProducer::connect_to_display( ) -> utils::Result< void >
         "the display closed the connection before it could be set up"
     );
 
-    spdlog::info( "Sharing output with the display at '{}'", settings_.socket_path.string( ) );
+    spdlog::info( "Sharing output with the display at '{}'", settings_.display_address );
     return utils::success( );
 }
 
@@ -312,7 +284,7 @@ auto ShareProducer::receive_messages( ) -> utils::Result< bool >
 
     while ( true )
     {
-        LTB_CHECK( auto const received, socket_.receive( buffer ) );
+        LTB_CHECK( auto const received, display_.receive( buffer ) );
 
         switch ( received.status )
         {
@@ -401,7 +373,7 @@ auto ShareProducer::render( uint32 const slot_index ) -> utils::Result< bool >
         { },
         { },
         vk::ImageMemoryBarrier{ }
-            .setImage( slot.image.get( ) )
+            .setImage( slot.shared.image( ).get( ) )
             .setSubresourceRange( color_subresource_range( ) )
             .setOldLayout( shared_image_layout )
             .setNewLayout( shared_image_layout )
@@ -423,7 +395,7 @@ auto ShareProducer::render( uint32 const slot_index ) -> utils::Result< bool >
 
     LTB_CHECK(
         auto const frame_status,
-        socket_.send_value(
+        display_.send_value(
             FrameMessage{
                 .type         = MessageType::FrameReady,
                 .slot         = slot_index,

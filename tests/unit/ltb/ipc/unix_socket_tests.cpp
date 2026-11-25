@@ -85,10 +85,10 @@ TEST( UnixSocketTests, PassesFileDescriptors )
     auto value  = TestMessage{ };
     auto result = receive_value( receiver, value );
     ASSERT_EQ( result.status, ReceiveStatus::Message );
-    ASSERT_EQ( result.message.fds.size( ), 1U );
+    ASSERT_EQ( result.message.handles.size( ), 1U );
 
     auto const text = std::string{ "hi" };
-    ASSERT_EQ( ::write( result.message.fds[ 0 ].get( ), text.data( ), text.size( ) ), 2 );
+    ASSERT_EQ( ::write( result.message.handles[ 0 ].get( ), text.data( ), text.size( ) ), 2 );
 
     auto buffer = std::array< char, 2 >{ };
     ASSERT_EQ( ::read( read_end.get( ), buffer.data( ), buffer.size( ) ), 2 );

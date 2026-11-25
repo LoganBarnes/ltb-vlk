@@ -24,9 +24,6 @@
 #include <cxxopts.hpp>
 #include <spdlog/spdlog.h>
 
-// system
-#include <unistd.h>
-
 // standard
 #include <cmath>
 #include <cstdlib>
@@ -35,12 +32,11 @@
 namespace
 {
 
-auto run_display( std::filesystem::path socket_path ) -> ltb::utils::Result< void >
+auto run_display( ltb::ipc::ChannelAddress address ) -> ltb::utils::Result< void >
 {
     auto glfw   = ltb::window::GlfwContext{ };
     auto window = ltb::window::GlfwWindow{ glfw, { .title = "Shared Output Display" } };
-    auto app
-        = ltb::share::ShareDisplay{ glfw, window, { .socket_path = std::move( socket_path ) } };
+    auto app    = ltb::share::ShareDisplay{ glfw, window, { .address = std::move( address ) } };
 
     return ltb::window::run_update_loop( glfw, window, app );
 }
@@ -61,8 +57,9 @@ auto main( int const argc, char const* const* const argv ) -> int
     options.add_options( )
         ( "display", "Open a window that shows the output of every producer" )
         ( "share", "Render offscreen and share the output with a running display" )
-        ( "socket", "Socket the display listens on",
-          cxxopts::value< std::string >( )->default_value( ltb::share::default_socket_path( ).string( ) ) )
+        ( "socket", "Address the display listens on (a socket path on Linux)",
+          cxxopts::value< std::string >( )->default_value(
+              ltb::ipc::default_channel_address( ltb::share::default_channel_name ) ) )
         ( "size", "Width and height of a producer's output, in pixels",
           cxxopts::value< ltb::uint32 >( )->default_value( "512" ) )
         ( "hue", "Producer color, 0 to 1 (defaults to one picked from the process id)",
@@ -97,12 +94,12 @@ auto main( int const argc, char const* const* const argv ) -> int
     // Ctrl+C shuts down cleanly (waits for the GPU, removes the socket file).
     ltb::share::install_stop_signal_handlers( );
 
-    auto const socket_path = std::filesystem::path{ parsed[ "socket" ].as< std::string >( ) };
+    auto const address = ltb::ipc::ChannelAddress{ parsed[ "socket" ].as< std::string >( ) };
 
     auto result = ltb::utils::Result< void >{ };
     if ( display )
     {
-        result = run_display( socket_path );
+        result = run_display( address );
     }
     else
     {
@@ -119,12 +116,13 @@ auto main( int const argc, char const* const* const argv ) -> int
         auto const     hue                   = ( parsed.count( "hue" ) > 0U )
                                                  ? parsed[ "hue" ].as< ltb::float32 >( )
                                                  : std::fmod(
-                                 static_cast< ltb::float32 >( ::getpid( ) ) * golden_ratio_fraction,
+                                 static_cast< ltb::float32 >( ltb::share::current_process_id( ) )
+                                     * golden_ratio_fraction,
                                  1.0F
                              );
 
         result = run_producer( {
-            .socket_path       = socket_path,
+            .display_address   = address,
             .extent            = { size, size },
             .hue               = hue,
             .frames_per_second = fps,
