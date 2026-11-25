@@ -31,7 +31,7 @@ auto Fence::initialize( FenceSettings const settings ) -> utils::Result< void >
     }
     LTB_CHECK_VALID( device_.is_initialized( ) );
 
-    auto const fence_info = vk::FenceCreateInfo{ }.setFlags( settings_.flags );
+    auto const fence_info = vk::FenceCreateInfo{ }.setFlags( settings.flags );
 
     VK_CHECK( auto fence, device_.get( ).createFenceUnique( fence_info ) );
     spdlog::debug( "vk::createFenceUnique()" );

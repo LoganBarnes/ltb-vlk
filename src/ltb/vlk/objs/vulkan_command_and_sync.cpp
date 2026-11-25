@@ -87,7 +87,7 @@ auto VulkanCommandAndSync::start_frame(
     ResetCommandBuffer const reset_command_buffer
 ) -> utils::Result< std::optional< FrameInfo > >
 {
-    constexpr auto max_possible_timeout = std::numeric_limits< uint32 >::max( );
+    constexpr auto max_possible_timeout = std::numeric_limits< uint64 >::max( );
 
     auto const  frame_objects             = this->get_frame_objects( );
     auto const& command_buffer            = frame_objects.command_buffer;
@@ -143,7 +143,7 @@ auto VulkanCommandAndSync::start_frame( ) -> utils::Result< std::optional< Frame
 auto VulkanCommandAndSync::start_frame( ResetCommandBuffer const reset_command_buffer )
     -> utils::Result< std::optional< FrameInfo > >
 {
-    constexpr auto max_possible_timeout = std::numeric_limits< uint32 >::max( );
+    constexpr auto max_possible_timeout = std::numeric_limits< uint64 >::max( );
 
     auto const  frame_objects   = this->get_frame_objects( );
     auto const& command_buffer  = frame_objects.command_buffer;
@@ -216,7 +216,7 @@ auto VulkanCommandAndSync::end_frame( FrameInfo const& frame, vk::Queue const& s
 
     auto wait_until_signaled = std::vector< SemaphoreAndStage >{
         {
-            .semaphore = this->get_frame_objects( ).frame_semaphore,
+            .semaphore = frame.image_semaphore,
             .stage     = vk::PipelineStageFlagBits::eColorAttachmentOutput,
         },
     };

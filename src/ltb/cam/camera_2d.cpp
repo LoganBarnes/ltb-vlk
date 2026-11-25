@@ -103,6 +103,11 @@ auto Camera2d::handle_inputs( ) -> bool
 
 auto Camera2d::resize( glm::vec2 const& viewport_size ) -> void
 {
+    // Ignore empty viewports (e.g. a minimized window) to avoid dividing by zero.
+    if ( ( viewport_size.x <= 0.0F ) || ( viewport_size.y <= 0.0F ) )
+    {
+        return;
+    }
     viewport_size_ = viewport_size;
     update_render_params( );
 }

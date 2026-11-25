@@ -5,6 +5,7 @@
 
 // project
 #include "ltb/utils/container_utils.hpp"
+#include "ltb/utils/ignore.hpp"
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/descriptor_pool.hpp"
 #include "ltb/vlk/device.hpp"
@@ -56,6 +57,18 @@ auto DescriptorSets::get( ) -> std::vector< vk::DescriptorSet >&
 
 auto DescriptorSets::reset( ) -> void
 {
+    // Return the sets to the pool so it can reuse them. This is only valid if the pool was
+    // created with `eFreeDescriptorSet`; otherwise the sets are reclaimed when the pool resets.
+    if ( !descriptor_sets_.empty( )
+         && ( descriptor_pool_.settings( ).flags
+              & vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet ) )
+    {
+        // vkFreeDescriptorSets always returns VK_SUCCESS.
+        utils::ignore(
+            device_.get( ).freeDescriptorSets( descriptor_pool_.get( ), descriptor_sets_ )
+        );
+    }
+
     descriptor_sets_.clear( );
     settings_ = { };
 }

@@ -58,6 +58,13 @@ auto VulkanPresentation::rebuild( VulkanPresentationRebuildSettings settings )
         settings.swapchain.extent = gpu_.surface( ).framebuffer_size( );
     }
 
+    // A minimized window has a 0x0 extent. Keep the current swapchain (and everything built
+    // on it) until the window has a real size again, since a 0x0 swapchain can't be created.
+    if ( ( 0U == settings.swapchain.extent.width ) || ( 0U == settings.swapchain.extent.height ) )
+    {
+        return utils::success( );
+    }
+
     if ( ( Rebuild::IfSizeChanged == settings.rebuild )
          && ( settings.swapchain.extent == swapchain_.settings( ).extent ) )
     {

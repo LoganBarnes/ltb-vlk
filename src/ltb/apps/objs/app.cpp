@@ -266,6 +266,7 @@ auto ObjsApp::render( ) -> utils::Result< void >
         LTB_CHECK(
             cmd_and_sync_.present_frame( frame, presentation_.swapchain( ), present_queue_ )
         );
+        cmd_and_sync_.increment_frame( );
     }
     return utils::success( );
 }

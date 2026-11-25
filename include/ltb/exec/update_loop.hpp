@@ -11,6 +11,10 @@
 // external
 #include <glm/glm.hpp>
 
+// standard
+#include <concepts>
+#include <utility>
+
 namespace ltb::exec
 {
 
@@ -62,10 +66,36 @@ struct InternalLoopState
 
 template < typename Object >
 concept IsUpdatable = requires( Object obj, UpdateLoopStatus const& status, glm::ivec2 size ) {
+    { obj.initialize( ) } -> std::same_as< utils::Result< UpdateLoopStatus > >;
     { obj.fixed_step_update( status ) } -> std::same_as< UpdateRequests >;
     { obj.frame_update( status ) } -> std::same_as< UpdateRequests >;
     { obj.on_resize( size ) } -> std::same_as< utils::Result< void > >;
 };
+
+/// \brief Apps that need to release resources (e.g. wait for the GPU) when the loop ends.
+template < typename Object >
+concept HasCleanUp = requires( Object obj ) {
+    { obj.clean_up( ) } -> std::same_as< utils::Result< void > >;
+};
+
+/// \brief Runs `loop` and then always calls `app.clean_up()` (if the app has one),
+///        even when `loop` returns an error. The loop's error takes precedence.
+template < typename App, typename Loop >
+auto run_then_clean_up( App& app, Loop&& loop ) -> utils::Result< void >
+{
+    auto loop_result = std::forward< Loop >( loop )( );
+
+    if constexpr ( HasCleanUp< App > )
+    {
+        auto clean_up_result = app.clean_up( );
+        if ( loop_result && !clean_up_result )
+        {
+            return clean_up_result;
+        }
+    }
+
+    return loop_result;
+}
 
 // Stores the app's requests and adopts the requested time step (ignored if not positive so
 // the fixed update loop always terminates).
@@ -117,27 +147,25 @@ auto single_loop_iteration( InternalLoopState& internal_state, UpdateLoopStatus&
     apply_requests( status, app.frame_update( status ) );
 }
 
+/// \brief Runs `app` until it requests an exit. The initial loop status comes from
+///        `app.initialize()`. `app.clean_up()` (if present) runs once the loop ends.
 template < typename App >
     requires IsUpdatable< App >
 auto run_update_loop( App& app ) -> utils::Result< void >
 {
-    return run_update_loop< App >( app, UpdateLoopStatus{ } );
-}
-
-template < typename App >
-    requires IsUpdatable< App >
-auto run_update_loop( App& app, UpdateLoopStatus status ) -> utils::Result< void >
-{
+    auto status = UpdateLoopStatus{ };
     LTB_CHECK( status, app.initialize( ) );
 
-    auto internal_state = InternalLoopState{ status.update_time_step };
+    return run_then_clean_up( app, [ & ]( ) -> utils::Result< void > {
+        auto internal_state = InternalLoopState{ status.update_time_step };
 
-    while ( !status.requests.exit_update_loop )
-    {
-        single_loop_iteration( internal_state, status, app );
-    }
+        while ( !status.requests.exit_update_loop )
+        {
+            single_loop_iteration( internal_state, status, app );
+        }
 
-    return utils::success( );
+        return utils::success( );
+    } );
 }
 
 } // namespace ltb::exec

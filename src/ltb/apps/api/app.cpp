@@ -645,7 +645,7 @@ auto ApiApp::initialize_vertex_buffer( ) -> utils::Result< ApiApp* >
 
 auto ApiApp::render( ) -> utils::Result< void >
 {
-    constexpr auto max_possible_timeout = std::numeric_limits< uint32 >::max( );
+    constexpr auto max_possible_timeout = std::numeric_limits< uint64 >::max( );
 
     auto const& command_buffer
         = cmd_and_sync_.command_buffers[ cmd_and_sync_.current_frame_index ].get( );

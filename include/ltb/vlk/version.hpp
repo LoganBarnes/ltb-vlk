@@ -13,6 +13,4 @@
     ( ( ( uint32_t{ variant } ) << 29U ) | ( ( uint32_t{ major } ) << 22U )                        \
       | ( ( uint32_t{ minor } ) << 12U ) | ( uint32_t{ patch } ) )
 
-#if defined( VK_API_VERSION_1_4 )
-#define VLK_API_VERSION_1_4 VLK_MAKE_API_VERSION( 0, 1, 3, 0 )
-#endif
+#define VLK_API_VERSION_1_4 VLK_MAKE_API_VERSION( 0, 1, 4, 0 )

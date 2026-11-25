@@ -699,7 +699,8 @@ auto Particles2App::record_render_commands( vlk::objs::FrameInfo const& frame )
 
     LTB_CHECK( graphics_.bind_descriptor_sets( frame ) );
 
-    auto const compute_frame_index = compute_cmd_and_sync_.frame_index( );
+    // `increment_frame()` has already run, so the newest compute output is the previous frame.
+    auto const compute_frame_index = compute_cmd_and_sync_.previous_frame( );
     LTB_CHECK_VALID( compute_frame_index < gpu_particles_.layout( ).ranges.size( ) );
     auto const& vbo_offset = gpu_particles_.layout( ).ranges[ compute_frame_index ].offset;
 
