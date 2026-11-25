@@ -1,8 +1,6 @@
 // ///////////////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2022 Logan Barnes - All Rights Reserved
 // ///////////////////////////////////////////////////////////////////////////////////////
+// This file only compiles its header on its own, which checks that the header
+// includes everything it needs.
 #include "ltb/utils/variant_utils.hpp"
-
-namespace ltb::utils
-{
-} // namespace ltb::utils

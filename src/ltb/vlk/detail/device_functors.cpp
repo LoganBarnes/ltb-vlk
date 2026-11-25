@@ -143,15 +143,42 @@ SuitablePhysicalDevice::SuitablePhysicalDevice(
     auto const properties = physical_device.getProperties( );
     spdlog::info( "Found device: {}", std::string{ properties.deviceName } );
 
-    if ( vk::PhysicalDeviceType::eDiscreteGpu == properties.deviceType )
+    score = score_physical_device( properties, static_cast< uint32 >( extensions.size( ) ) );
+}
+
+auto score_physical_device(
+    vk::PhysicalDeviceProperties const& properties,
+    uint32 const                        supported_extension_count
+) -> uint64
+{
+    auto device_type_rank = uint64{ 0U };
+    switch ( properties.deviceType )
     {
-        score += 1000U;
+        using enum vk::PhysicalDeviceType;
+        case eDiscreteGpu:
+            device_type_rank = 4U;
+            break;
+        case eIntegratedGpu:
+            device_type_rank = 3U;
+            break;
+        case eVirtualGpu:
+            device_type_rank = 2U;
+            break;
+        case eCpu:
+            device_type_rank = 1U;
+            break;
+        default:
+            break;
     }
 
-    score += static_cast< uint32 >( extensions.size( ) ) * 100U;
+    // Each tier is weighted so it can never be outweighed by the tiers below it.
+    // (maxImageDimension2D and the extension count are both far below 2^32.)
+    constexpr auto extension_weight   = uint64{ 1U } << 32U;
+    constexpr auto device_type_weight = uint64{ 1U } << 48U;
 
-    // Maximum possible size of textures affects graphics quality
-    score += properties.limits.maxImageDimension2D;
+    return ( device_type_rank * device_type_weight )
+         + ( uint64{ supported_extension_count } * extension_weight )
+         + uint64{ properties.limits.maxImageDimension2D };
 }
 
 } // namespace ltb::vlk::detail

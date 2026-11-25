@@ -31,6 +31,14 @@ public:
     explicit( false ) DeviceMemory( Device& device );
     ~DeviceMemory( );
 
+    // No copy
+    DeviceMemory( DeviceMemory const& )                    = delete;
+    auto operator=( DeviceMemory const& ) -> DeviceMemory& = delete;
+
+    // Move construction only (the device is a reference, so it can't be reassigned).
+    DeviceMemory( DeviceMemory&& other ) noexcept;
+    auto operator=( DeviceMemory&& ) noexcept -> DeviceMemory& = delete;
+
     auto initialize( DeviceMemorySettings settings ) -> utils::Result< void >;
 
     [[nodiscard( "Const getter" )]]
@@ -51,6 +59,7 @@ public:
     auto map( ) -> utils::Result< uint8* >;
     auto map( MemoryRange const& range ) -> utils::Result< uint8* >;
     auto map( MemoryRange const& range, vk::MemoryMapFlags flags ) -> utils::Result< uint8* >;
+    /// \brief Unmaps the memory if it's mapped. Does nothing otherwise.
     auto unmap( ) -> void;
 
 private:

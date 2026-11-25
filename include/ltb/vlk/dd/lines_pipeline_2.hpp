@@ -46,8 +46,6 @@ private:
     objs::VulkanGpu&          gpu_;
     objs::VulkanPresentation& presentation_;
 
-    objs::VulkanBuffer display_ubo_ = { gpu_ };
-
     objs::VulkanGraphicsPipeline pipeline_ = { gpu_, presentation_ };
 
     bool initialized_ = false;

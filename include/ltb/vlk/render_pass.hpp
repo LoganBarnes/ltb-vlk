@@ -11,6 +11,12 @@
 namespace ltb::vlk
 {
 
+/// \brief Everything needed to create a render pass.
+///
+/// `subpasses` point into this struct's own `color_attachment_refs` and
+/// `depth_attachment_ref`, so after a copy or move those pointers still refer to the
+/// original object. RenderPass::initialize() re-points them, so pass settings to it by
+/// value and don't use the subpass pointers of a copy directly.
 struct RenderPassSettings
 {
     vk::Format color_attachment_format = vk::Format::eUndefined;

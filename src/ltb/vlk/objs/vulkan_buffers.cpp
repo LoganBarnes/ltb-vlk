@@ -25,33 +25,46 @@ auto VulkanBuffers::initialize( VulkanBuffersSettings const& settings ) -> utils
     LTB_CHECK_VALID( gpu_.is_initialized( ) );
     LTB_CHECK_VALID( !settings.buffers.empty( ) );
 
-    for ( auto const& buffer_settings : settings.buffers )
+    // Undo any partial initialization on failure so initialize() can be retried.
+    auto const initialize_resources = [ this, &settings ]( ) -> utils::Result< void > {
+        for ( auto const& buffer_settings : settings.buffers )
+        {
+            LTB_CHECK( buffers_.emplace_back( gpu_.device( ) ).initialize( buffer_settings ) );
+        }
+
+        auto const memory_requirements
+            = get_member_functions( buffers_, &Buffer::memory_requirements );
+
+        LTB_CHECK(
+            layout_,
+            initialize_memory_chunk(
+                memory_,
+                gpu_.physical_device( ),
+                memory_requirements,
+                settings.memory_properties
+            )
+        );
+        LTB_CHECK_VALID( layout_.ranges.size( ) == buffers_.size( ) );
+
+        auto const& device = gpu_.device( ).get( );
+
+        auto const buffer_count = buffers_.size( );
+        for ( auto i = 0U; i < buffer_count; ++i )
+        {
+            auto const& buffer       = buffers_[ i ];
+            auto const& memory_range = layout_.ranges[ i ];
+
+            VK_CHECK(
+                device.bindBufferMemory( buffer.get( ), memory_.get( ), memory_range.offset )
+            );
+        }
+
+        return utils::success( );
+    };
+    if ( auto result = initialize_resources( ); !result )
     {
-        LTB_CHECK( buffers_.emplace_back( gpu_.device( ) ).initialize( buffer_settings ) );
-    }
-
-    auto const memory_requirements = get_member_functions( buffers_, &Buffer::memory_requirements );
-
-    LTB_CHECK(
-        layout_,
-        initialize_memory_chunk(
-            memory_,
-            gpu_.physical_device( ),
-            memory_requirements,
-            settings.memory_properties
-        )
-    );
-    LTB_CHECK_VALID( layout_.ranges.size( ) == buffers_.size( ) );
-
-    auto const& device = gpu_.device( ).get( );
-
-    auto const buffer_count = buffers_.size( );
-    for ( auto i = 0U; i < buffer_count; ++i )
-    {
-        auto const& buffer       = buffers_[ i ];
-        auto const& memory_range = layout_.ranges[ i ];
-
-        VK_CHECK( device.bindBufferMemory( buffer.get( ), memory_.get( ), memory_range.offset ) );
+        this->reset( );
+        return result;
     }
 
     initialized_ = true;

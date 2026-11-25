@@ -14,7 +14,7 @@ namespace ltb::vlk
 
 struct CommandPoolSettings
 {
-    QueueType                  queue_type = QueueType::Unknown;
+    QueueType                  queue_type = QueueType::Graphics;
     vk::CommandPoolCreateFlags flags      = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 };
 

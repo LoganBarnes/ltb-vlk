@@ -23,21 +23,31 @@ auto VulkanImage::initialize( VulkanImageSettings settings ) -> utils::Result< v
     }
     LTB_CHECK_VALID( gpu_.is_initialized( ) );
 
-    LTB_CHECK( image_.initialize( std::move( settings.image ) ) );
+    // Undo any partial initialization on failure so initialize() can be retried.
+    auto const initialize_resources = [ this, &settings ]( ) -> utils::Result< void > {
+        LTB_CHECK( image_.initialize( std::move( settings.image ) ) );
 
-    LTB_CHECK(
-        auto const memory_range,
-        initialize_memory_chunk(
-            memory_,
-            gpu_.physical_device( ),
-            image_.memory_requirements( ),
-            settings.memory_properties
-        )
-    );
+        LTB_CHECK(
+            auto const memory_range,
+            initialize_memory_chunk(
+                memory_,
+                gpu_.physical_device( ),
+                image_.memory_requirements( ),
+                settings.memory_properties
+            )
+        );
 
-    VK_CHECK(
-        gpu_.device( ).get( ).bindImageMemory( image_.get( ), memory_.get( ), memory_range.offset )
-    );
+        VK_CHECK( gpu_.device( )
+                      .get( )
+                      .bindImageMemory( image_.get( ), memory_.get( ), memory_range.offset ) );
+
+        return utils::success( );
+    };
+    if ( auto result = initialize_resources( ); !result )
+    {
+        this->reset( );
+        return result;
+    }
 
     initialized_ = true;
 

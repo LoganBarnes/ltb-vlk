@@ -45,6 +45,13 @@ struct CheckSurfaceSupport
         -> utils::Result< vk::PhysicalDevice >;
 };
 
+/// \brief Ranks a GPU. The device type always dominates (discrete > integrated > virtual >
+///        CPU > other). Supported optional extensions break ties, then max texture size.
+auto score_physical_device(
+    vk::PhysicalDeviceProperties const& properties,
+    uint32                              supported_extension_count
+) -> uint64;
+
 struct SuitablePhysicalDevice
 {
     vk::PhysicalDevice         physical_device;
@@ -57,7 +64,7 @@ struct SuitablePhysicalDevice
         std::vector< char const* > supported_extensions
     );
 
-    uint32 score = 0U;
+    uint64 score = 0U;
 };
 
 inline auto operator<=>( SuitablePhysicalDevice const& lhs, SuitablePhysicalDevice const& rhs )

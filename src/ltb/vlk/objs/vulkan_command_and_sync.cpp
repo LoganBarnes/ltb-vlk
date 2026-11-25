@@ -298,14 +298,12 @@ auto VulkanCommandAndSync::previous_frame( ) const -> uint32
 
 auto VulkanCommandAndSync::compute_previous_frame( uint32 const index ) const -> uint32
 {
-    auto const frame_count = static_cast< uint32 >( command_buffers_.size( ) );
-    return ( ( index + frame_count ) - 1U ) % frame_count;
+    return previous_frame_index( index, static_cast< uint32 >( command_buffers_.size( ) ) );
 }
 
 auto VulkanCommandAndSync::compute_next_frame( uint32 const index ) const -> uint32
 {
-    auto const frame_count = static_cast< uint32 >( command_buffers_.size( ) );
-    return ( index + 1U ) % frame_count;
+    return next_frame_index( index, static_cast< uint32 >( command_buffers_.size( ) ) );
 }
 
 auto VulkanCommandAndSync::command_pool( ) const -> CommandPool const&

@@ -3,64 +3,34 @@
 // ///////////////////////////////////////////////////////////////////////////////////////
 #include "ltb/utils/logging.hpp"
 
-// external
-#include <magic_enum.hpp>
-#include <spdlog/spdlog.h>
+// project
+#include "ltb/utils/string.hpp"
 
-// standard
-#include <ranges>
+// external
+#include <spdlog/spdlog.h>
 
 namespace ltb::utils
 {
 
 auto try_setting_log_level( std::string const& log_level ) -> utils::Result< void >
 {
+    // Accepts spdlog's full names ("warning", "error") and short names ("warn", "err"),
+    // in any case.
+    auto const name  = to_lower_ascii( log_level );
+    auto const level = spdlog::level::from_str( name );
 
-    // log_levels -> {{level::debug, "debug"}, {level::trace, "trace"}, ... etc.}
-    auto const log_levels = magic_enum::enum_entries< spdlog::level::level_enum >( )
-                          | std::views::filter( []( auto const& value_and_name ) {
-                                // remove the 'n_levels' enum from the list.
-                                return value_and_name.first != spdlog::level::n_levels;
-                            } )
-                          | std::ranges::to< std::vector >( );
-
-    auto log_level_specified = false;
-
-    for ( auto const& [ value, name ] : log_levels )
+    // `from_str` returns `off` for unrecognized names.
+    if ( ( spdlog::level::off == level ) && ( "off" != name ) )
     {
-        if ( value == spdlog::level::n_levels )
-        {
-            continue;
-        }
-        if ( log_level == name )
-        {
-            spdlog::set_level( value );
-            log_level_specified = true;
-            spdlog::info( "Log level: {}", name );
-        }
-    }
-
-    if ( !log_level_specified )
-    {
-        auto const log_levels_list
-            = log_levels
-            // {{level::debug, "debug"},{level::trace, "trace"},...} => {"debug", "trace",...}
-            | std::views::transform( []( auto const& value_and_name ) {
-                  //
-                  return std::string( value_and_name.second );
-              } )
-            // {"debug", "trace",...} => "debug\ntrace\n...";
-            | std::views::join_with( '\n' ) //
-            | std::ranges::to< std::string >( );
-
         return LTB_MAKE_UNEXPECTED_ERROR(
             "Unrecognized log level: '{}'\n"
-            "Available options are:\n"
-            "{}",
-            log_level,
-            log_levels_list
+            "Available options are: trace, debug, info, warning (warn), error (err), critical, off",
+            log_level
         );
     }
+
+    spdlog::set_level( level );
+    spdlog::info( "Log level: {}", spdlog::level::to_string_view( level ) );
 
     return success( );
 }

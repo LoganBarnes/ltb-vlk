@@ -40,23 +40,23 @@ public:
 
     auto bind_descriptor_sets( FrameInfo const& frame ) -> utils::Result< void >;
 
-    [[nodiscard( "Cosnt getter" )]]
+    [[nodiscard( "Const getter" )]]
     auto shader_module( ) const -> ShaderModule const&;
     auto shader_module( ) -> ShaderModule&;
 
-    [[nodiscard( "Cosnt getter" )]]
+    [[nodiscard( "Const getter" )]]
     auto descriptor_set_layout( ) const -> DescriptorSetLayout const&;
     auto descriptor_set_layout( ) -> DescriptorSetLayout&;
 
-    [[nodiscard( "Cosnt getter" )]]
+    [[nodiscard( "Const getter" )]]
     auto descriptor_sets( ) const -> DescriptorSets const&;
     auto descriptor_sets( ) -> DescriptorSets&;
 
-    [[nodiscard( "Cosnt getter" )]]
+    [[nodiscard( "Const getter" )]]
     auto pipeline_layout( ) const -> PipelineLayout const&;
     auto pipeline_layout( ) -> PipelineLayout&;
 
-    [[nodiscard( "Cosnt getter" )]]
+    [[nodiscard( "Const getter" )]]
     auto pipeline( ) const -> ComputePipeline const&;
     auto pipeline( ) -> ComputePipeline&;
 

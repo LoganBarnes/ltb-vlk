@@ -125,9 +125,11 @@ auto build_queue_family_map(
 
         for ( auto const& type : types )
         {
-            if ( queue_families[ i ].queueFlags & type )
+            // Flags without a QueueType (e.g. video) can't be looked up, so don't store them.
+            auto const queue_type = to_queue_type( type );
+            if ( ( QueueType::Unknown != queue_type ) && ( queue_families[ i ].queueFlags & type ) )
             {
-                queue_family_map.try_emplace( to_queue_type( type ), i );
+                queue_family_map.try_emplace( queue_type, i );
             }
         }
 

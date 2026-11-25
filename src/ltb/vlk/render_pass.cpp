@@ -19,6 +19,10 @@ namespace ltb::vlk
 namespace
 {
 
+/// \brief Points a subpass's color and depth attachment references at `settings`' members.
+///
+/// Input, resolve, and preserve attachments have no storage in RenderPassSettings, so any
+/// pointers to them are owned by the caller and left alone.
 struct RepointSubpass
 {
     RenderPassSettings& settings;
@@ -199,6 +203,10 @@ auto RenderPass::initialize( RenderPassSettings settings, Swapchain const* const
 
     settings_    = std::move( settings );
     render_pass_ = std::move( render_pass );
+
+    // The move changed the address of `depth_attachment_ref`, so re-point again so that
+    // `settings()` never hands out pointers into the destroyed local copy.
+    std::ranges::for_each( settings_.subpasses, RepointSubpass{ settings_ } );
 
     return utils::success( );
 }

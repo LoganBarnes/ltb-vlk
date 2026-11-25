@@ -144,7 +144,10 @@ auto LinesPipeline2::initialize_mesh(
     auto vbo_layout = MemoryLayout{ };
     append_memory_size( vbo_layout, positions_size );
 
-    auto& mesh_data = mesh_data_.emplace_back( gpu_ );
+    // Build the mesh in its own list and splice it in only once it's complete, so a failure
+    // doesn't leave a half-initialized mesh behind. Splicing keeps `mesh_data` valid.
+    auto  pending_mesh = std::list< MeshAndUniforms >{ };
+    auto& mesh_data    = pending_mesh.emplace_back( gpu_ );
 
     LTB_CHECK( mesh_data.vbo.initialize( {
         .layout       = std::move( vbo_layout ),
@@ -201,6 +204,7 @@ auto LinesPipeline2::initialize_mesh(
     VK_CHECK( queue.waitIdle( ) );
 
     mesh_data.draw_count = vertex_count;
+    mesh_data_.splice( mesh_data_.end( ), pending_mesh );
 
     return &mesh_data.uniforms;
 }

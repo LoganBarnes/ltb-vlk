@@ -42,6 +42,19 @@ struct SemaphoreAndStage
     vk::PipelineStageFlags stage     = vk::PipelineStageFlagBits::eNone;
 };
 
+/// \brief The frame slot before `index`, wrapping around. Returns 0 if `frame_count` is 0.
+constexpr auto previous_frame_index( uint32 const index, uint32 const frame_count ) -> uint32
+{
+    return ( 0U == frame_count ) ? 0U
+                                 : ( ( index % frame_count ) + frame_count - 1U ) % frame_count;
+}
+
+/// \brief The frame slot after `index`, wrapping around. Returns 0 if `frame_count` is 0.
+constexpr auto next_frame_index( uint32 const index, uint32 const frame_count ) -> uint32
+{
+    return ( 0U == frame_count ) ? 0U : ( ( index % frame_count ) + 1U ) % frame_count;
+}
+
 enum class SwapchainStatus
 {
     UpToDate,

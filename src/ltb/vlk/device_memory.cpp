@@ -13,6 +13,7 @@
 
 // standard
 #include <ranges>
+#include <utility>
 
 namespace ltb::vlk
 {
@@ -49,12 +50,17 @@ DeviceMemory::DeviceMemory( Device& device )
 {
 }
 
+DeviceMemory::DeviceMemory( DeviceMemory&& other ) noexcept
+    : device_( other.device_ )
+    , settings_( std::exchange( other.settings_, { } ) )
+    , device_memory_( std::move( other.device_memory_ ) )
+    , mapped_( std::exchange( other.mapped_, false ) )
+{
+}
+
 DeviceMemory::~DeviceMemory( )
 {
-    if ( this->mapped_ )
-    {
-        device_.get( ).unmapMemory( device_memory_.get( ) );
-    }
+    this->unmap( );
 }
 
 auto DeviceMemory::initialize( DeviceMemorySettings const settings ) -> utils::Result< void >
@@ -95,11 +101,7 @@ auto DeviceMemory::get( ) -> vk::DeviceMemory&
 
 auto DeviceMemory::reset( ) -> void
 {
-    if ( this->mapped_ )
-    {
-        device_.get( ).unmapMemory( device_memory_.get( ) );
-        mapped_ = false;
-    }
+    this->unmap( );
     device_memory_ = { };
     settings_      = { };
 }
@@ -147,8 +149,11 @@ auto DeviceMemory::map( MemoryRange const& range, vk::MemoryMapFlags flags )
 
 auto DeviceMemory::unmap( ) -> void
 {
-    device_.get( ).unmapMemory( device_memory_.get( ) );
-    mapped_ = false;
+    if ( this->mapped_ )
+    {
+        device_.get( ).unmapMemory( device_memory_.get( ) );
+        mapped_ = false;
+    }
 }
 
 auto compute_memory_layout( std::vector< vk::MemoryRequirements > const& requirements )

@@ -57,7 +57,13 @@ struct GraphicsPipelineSettings
               .setStencilTestEnable( false );
 
     /// \brief Blend new fragments with the existing color using the fragment's alpha.
+    ///        Ignored if `color_blend_attachments` is set.
     bool alpha_blending = false;
+
+    /// \brief One blend state per color attachment in the pipeline's subpass. If unset, every
+    ///        color attachment gets the default state (with `alpha_blending` applied).
+    std::optional< std::vector< vk::PipelineColorBlendAttachmentState > > color_blend_attachments
+        = std::nullopt;
 
     std::optional< vk::PipelineTessellationStateCreateInfo > tessellation_state = std::nullopt;
 };

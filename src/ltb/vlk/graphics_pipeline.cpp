@@ -75,20 +75,34 @@ auto GraphicsPipeline::initialize( GraphicsPipelineSettings settings ) -> utils:
             .setScissors( settings.scissors )
     );
 
-    auto const color_blend_attachments = std::vector{
-        vk::PipelineColorBlendAttachmentState{ }
-            .setColorWriteMask(
-                vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
-                | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA
-            )
-            .setBlendEnable( settings.alpha_blending )
-            .setSrcColorBlendFactor( vk::BlendFactor::eSrcAlpha )
-            .setDstColorBlendFactor( vk::BlendFactor::eOneMinusSrcAlpha )
-            .setColorBlendOp( vk::BlendOp::eAdd )
-            .setSrcAlphaBlendFactor( vk::BlendFactor::eOne )
-            .setDstAlphaBlendFactor( vk::BlendFactor::eOneMinusSrcAlpha )
-            .setAlphaBlendOp( vk::BlendOp::eAdd ),
-    };
+    // The number of blend states must match the subpass's color attachment count (zero for
+    // depth-only passes, more for multiple render targets).
+    constexpr auto subpass_index = 0U;
+    auto const&    subpasses     = render_pass_.settings( ).subpasses;
+    LTB_CHECK_VALID( subpass_index < subpasses.size( ) );
+    auto const color_attachment_count = subpasses[ subpass_index ].colorAttachmentCount;
+
+    auto const default_blend_attachment
+        = vk::PipelineColorBlendAttachmentState{ }
+              .setColorWriteMask(
+                  vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
+                  | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA
+              )
+              .setBlendEnable( settings.alpha_blending )
+              .setSrcColorBlendFactor( vk::BlendFactor::eSrcAlpha )
+              .setDstColorBlendFactor( vk::BlendFactor::eOneMinusSrcAlpha )
+              .setColorBlendOp( vk::BlendOp::eAdd )
+              .setSrcAlphaBlendFactor( vk::BlendFactor::eOne )
+              .setDstAlphaBlendFactor( vk::BlendFactor::eOneMinusSrcAlpha )
+              .setAlphaBlendOp( vk::BlendOp::eAdd );
+
+    auto const color_blend_attachments = settings.color_blend_attachments.value_or(
+        std::vector( color_attachment_count, default_blend_attachment )
+    );
+    LTB_CHECK_VALID(
+        color_blend_attachments.size( ) == color_attachment_count,
+        "need one color blend attachment per color attachment in the subpass"
+    );
 
     auto const color_blending = vk::PipelineColorBlendStateCreateInfo{ }
                                     .setLogicOpEnable( false )
@@ -125,7 +139,7 @@ auto GraphicsPipeline::initialize( GraphicsPipelineSettings settings ) -> utils:
             .setPDynamicState( &dynamic_state )
             .setLayout( pipeline_layout_.get( ) )
             .setRenderPass( render_pass_.get( ) )
-            .setSubpass( 0 ),
+            .setSubpass( subpass_index ),
     };
 
     VK_CHECK(
