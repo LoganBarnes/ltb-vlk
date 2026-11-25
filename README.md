@@ -38,8 +38,12 @@ ctest --test-dir build -L unit   # CPU only
 ctest --test-dir build -L gpu    # Needs a Vulkan device; skipped if none is found
 ```
 
-GPU tests run on a headless device. Without a GPU (e.g. in CI), Mesa's
-lavapipe driver provides a software one.
+GPU tests run on a headless device and are skipped if none is found. Without a GPU,
+Mesa's lavapipe driver (`mesa-vulkan-drivers`) provides a software one. Set
+`LTB_VLK_REQUIRE_GPU=1` to make a missing device fail the tests instead.
+
+CI (`.github/workflows/ci.yml`) builds everything with strict flags using GCC and Clang,
+then runs all tests on lavapipe with the validation layer enabled.
 
 ## Examples
 

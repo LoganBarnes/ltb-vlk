@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same branch or pull request.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Keep in sync with the SDK version used for local development.
+  VULKAN_SDK_VERSION: 1.4.357.1
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.compiler.name }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - { name: gcc-14, cc: gcc-14, cxx: g++-14 }
+          - { name: clang-18, cc: clang-18, cxx: clang++-18 }
+
+    env:
+      CC: ${{ matrix.compiler.cc }}
+      CXX: ${{ matrix.compiler.cxx }}
+      CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+      VULKAN_SDK_DIR: ${{ github.workspace }}/.vulkan-sdk
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          # X11 headers for GLFW, OpenGL for the `raw` example, and Mesa for the lavapipe
+          # software Vulkan driver the GPU tests run on.
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxkbcommon-dev \
+            libgl-dev \
+            libtbb-dev \
+            mesa-vulkan-drivers
+
+      - name: Cache Vulkan SDK
+        id: cache-vulkan-sdk
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VULKAN_SDK_DIR }}
+          key: vulkan-sdk-${{ env.VULKAN_SDK_VERSION }}-subset-v1
+
+      - name: Download Vulkan SDK
+        if: steps.cache-vulkan-sdk.outputs.cache-hit != 'true'
+        run: |
+          # The full SDK is ~1.8 GB unpacked. Only extract what the build and tests use
+          # (headers, loader, glslc, validation layer), and strip the layer, which brings the
+          # cached subset down to ~80 MB.
+          mkdir -p "$VULKAN_SDK_DIR"
+          curl -fsSL "https://sdk.lunarg.com/sdk/download/${VULKAN_SDK_VERSION}/linux/vulkansdk-linux-x86_64-${VULKAN_SDK_VERSION}.tar.xz" \
+            | tar -xJ -C "$VULKAN_SDK_DIR" --wildcards \
+                '*/x86_64/include/*' \
+                '*/x86_64/bin/glslc' \
+                '*/x86_64/lib/VulkanLoader/*' \
+                '*/x86_64/lib/libVkLayer_khronos_validation.so' \
+                '*/x86_64/share/vulkan/explicit_layer.d/VkLayer_khronos_validation.json'
+          strip --strip-unneeded "$VULKAN_SDK_DIR/$VULKAN_SDK_VERSION/x86_64/lib/libVkLayer_khronos_validation.so"
+
+      - name: Set up Vulkan environment
+        run: |
+          # Mirrors the SDK's setup-env.sh.
+          sdk="$VULKAN_SDK_DIR/$VULKAN_SDK_VERSION/x86_64"
+          {
+            echo "VULKAN_SDK=$sdk"
+            echo "LD_LIBRARY_PATH=$sdk/lib/VulkanLoader/lib"
+            echo "VK_ADD_LAYER_PATH=$sdk/share/vulkan/explicit_layer.d"
+            echo "CMAKE_PREFIX_PATH=$sdk:$sdk/lib/VulkanLoader"
+            # Run the GPU tests on lavapipe, and fail (instead of skip) if it isn't usable.
+            echo "VK_DRIVER_FILES=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -n 1)"
+            echo "LTB_VLK_REQUIRE_GPU=1"
+          } >> "$GITHUB_ENV"
+          echo "$sdk/bin" >> "$GITHUB_PATH"
+
+      - name: Cache CPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-${{ hashFiles('cmake/ThirdParty.cmake', 'cmake/CPM.cmake') }}
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DLTB_VLK_USE_STRICT_FLAGS=ON
+          -DLTB_VLK_BUILD_EXAMPLES=ON
+          -DLTB_VLK_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
