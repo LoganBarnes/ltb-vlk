@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/LoganBarnes/ltb-vlk/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/LoganBarnes/ltb-vlk/actions/workflows/ci.yml)
 
-A C++ Vulkan Library. Work in progress.
+A C++ Vulkan Library. Work in progress. See [docs/ROADMAP.md](docs/ROADMAP.md) for open work.
 
 ## Requirements
 
