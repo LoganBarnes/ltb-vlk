@@ -75,6 +75,19 @@ file(
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/window/*.cpp
 )
 
+# Inter-process communication (Unix domain sockets that can pass file descriptors).
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  file(
+    GLOB_RECURSE
+    LtbVlk_IPC_SOURCE_FILES
+    LIST_DIRECTORIES
+    false
+    CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_LIST_DIR}/src/ltb/ipc/*.cpp
+  )
+  list(APPEND LtbVlk_CORE_SOURCE_FILES ${LtbVlk_IPC_SOURCE_FILES})
+endif ()
+
 add_library(
   LtbVlk
   ${LtbVlk_CORE_SOURCE_FILES}

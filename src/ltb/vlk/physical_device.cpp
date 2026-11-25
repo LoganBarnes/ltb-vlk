@@ -14,6 +14,7 @@
 #include <spdlog/spdlog.h>
 
 // standard
+#include <algorithm>
 #include <queue>
 #include <ranges>
 
@@ -173,6 +174,19 @@ auto PhysicalDevice::get( ) -> vk::PhysicalDevice&
 auto PhysicalDevice::properties( ) const -> vk::PhysicalDeviceProperties const&
 {
     return properties_;
+}
+
+auto PhysicalDevice::identity( ) const -> DeviceIdentity
+{
+    auto const properties
+        = physical_device_
+              .getProperties2< vk::PhysicalDeviceProperties2, vk::PhysicalDeviceIDProperties >( );
+    auto const& id_properties = properties.get< vk::PhysicalDeviceIDProperties >( );
+
+    auto identity = DeviceIdentity{ };
+    std::ranges::copy( id_properties.deviceUUID, identity.device_uuid.begin( ) );
+    std::ranges::copy( id_properties.driverUUID, identity.driver_uuid.begin( ) );
+    return identity;
 }
 
 auto PhysicalDevice::settings( ) const -> DeviceSettings const&

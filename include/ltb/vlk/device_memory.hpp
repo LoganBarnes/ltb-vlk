@@ -9,14 +9,29 @@
 #include "ltb/vlk/fwd.hpp"
 #include "ltb/vlk/vulkan.hpp"
 
+// standard
+#include <optional>
+
 namespace ltb::vlk
 {
 
 struct DeviceMemorySettings
 {
-
     vk::DeviceSize allocation_size   = 0UZ;
     uint32         memory_type_index = 0U;
+
+    /// \brief Handle types the memory can be exported as (see `DeviceMemory::export_fd`).
+    vk::ExternalMemoryHandleTypeFlags export_handle_types = { };
+
+    /// \brief Imports memory exported by another device or process instead of allocating new
+    ///        memory. `allocation_size` and `memory_type_index` must match the exporter's.
+    ///        On success Vulkan owns the file descriptor; on failure the caller still owns it.
+    std::optional< int > import_fd = std::nullopt;
+
+    /// \brief Allocates the memory for this image alone. Some drivers require this for
+    ///        exported or imported image memory, and both sides must agree, so it's
+    ///        simplest to always set it when sharing image memory.
+    vk::Image dedicated_image = nullptr;
 };
 
 struct MemoryRange
@@ -61,6 +76,13 @@ public:
     auto map( MemoryRange const& range, vk::MemoryMapFlags flags ) -> utils::Result< uint8* >;
     /// \brief Unmaps the memory if it's mapped. Does nothing otherwise.
     auto unmap( ) -> void;
+
+    /// \brief Returns a new file descriptor for this memory, which another device or process
+    ///        can import (see `DeviceMemorySettings::import_fd`). The caller owns the result.
+    ///        The memory must have been allocated with `export_handle_types` including `type`.
+    auto export_fd(
+        vk::ExternalMemoryHandleTypeFlagBits type = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd
+    ) const -> utils::Result< int >;
 
 private:
     Device& device_;

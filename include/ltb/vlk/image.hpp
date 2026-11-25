@@ -32,6 +32,10 @@ struct ImageSettings
     /// \brief The queue families that will access the image. Only used (and required, with
     ///        at least two unique families) when `sharing_mode` is `eConcurrent`.
     std::vector< uint32 > queue_family_indices = { };
+
+    /// \brief Set to export or import the image's memory (e.g. `eOpaqueFd` to share it with
+    ///        another process). Images that share memory must use identical settings.
+    vk::ExternalMemoryHandleTypeFlags external_memory_handle_types = { };
 };
 
 class Image

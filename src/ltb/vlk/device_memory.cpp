@@ -71,9 +71,34 @@ auto DeviceMemory::initialize( DeviceMemorySettings const settings ) -> utils::R
     }
     LTB_CHECK_VALID( device_.is_initialized( ) );
 
-    auto const alloc_info = vk::MemoryAllocateInfo{ }
-                                .setAllocationSize( settings.allocation_size )
-                                .setMemoryTypeIndex( settings.memory_type_index );
+    auto alloc_info = vk::MemoryAllocateInfo{ }
+                          .setAllocationSize( settings.allocation_size )
+                          .setMemoryTypeIndex( settings.memory_type_index );
+
+    // Optional structs are linked into the pNext chain only when used.
+    auto export_info
+        = vk::ExportMemoryAllocateInfo{ }.setHandleTypes( settings.export_handle_types );
+    auto import_info = vk::ImportMemoryFdInfoKHR{ }
+                           .setHandleType( vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd )
+                           .setFd( settings.import_fd.value_or( -1 ) );
+    auto dedicated_info = vk::MemoryDedicatedAllocateInfo{ }.setImage( settings.dedicated_image );
+
+    auto const prepend = [ &alloc_info ]( auto& info ) -> void {
+        info.pNext = alloc_info.pNext;
+        alloc_info.setPNext( &info );
+    };
+    if ( settings.export_handle_types )
+    {
+        prepend( export_info );
+    }
+    if ( settings.import_fd.has_value( ) )
+    {
+        prepend( import_info );
+    }
+    if ( settings.dedicated_image )
+    {
+        prepend( dedicated_info );
+    }
 
     VK_CHECK( auto memory, device_.get( ).allocateMemoryUnique( alloc_info ) );
     spdlog::debug( "vk::allocateMemoryUnique()" );
@@ -154,6 +179,37 @@ auto DeviceMemory::unmap( ) -> void
         device_.get( ).unmapMemory( device_memory_.get( ) );
         mapped_ = false;
     }
+}
+
+auto DeviceMemory::export_fd( vk::ExternalMemoryHandleTypeFlagBits const type ) const
+    -> utils::Result< int >
+{
+    LTB_CHECK_VALID( this->is_initialized( ) );
+    LTB_CHECK_VALID(
+        static_cast< bool >( settings_.export_handle_types & type ),
+        "memory wasn't allocated with this export handle type"
+    );
+
+    // An extension function, so it isn't exported by the Vulkan loader and must be looked up.
+    auto const get_memory_fd = reinterpret_cast< PFN_vkGetMemoryFdKHR >(
+        device_.get( ).getProcAddr( "vkGetMemoryFdKHR" )
+    );
+    LTB_CHECK_VALID( get_memory_fd, "VK_KHR_external_memory_fd isn't enabled on the device" );
+
+    auto const fd_info
+        = vk::MemoryGetFdInfoKHR{ }.setMemory( device_memory_.get( ) ).setHandleType( type );
+
+    auto       fd     = -1;
+    auto const result = vk::Result{ get_memory_fd(
+        device_.get( ),
+        reinterpret_cast< VkMemoryGetFdInfoKHR const* >( &fd_info ),
+        &fd
+    ) };
+    if ( vk::Result::eSuccess != result )
+    {
+        return LTB_MAKE_UNEXPECTED_ERROR( "vkGetMemoryFdKHR failed: {}", vk::to_string( result ) );
+    }
+    return fd;
 }
 
 auto compute_memory_layout( std::vector< vk::MemoryRequirements > const& requirements )

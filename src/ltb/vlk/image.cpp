@@ -48,6 +48,14 @@ auto Image::initialize( ImageSettings settings ) -> utils::Result< void >
         image_info.setQueueFamilyIndices( settings.queue_family_indices );
     }
 
+    auto const external_memory_info = vk::ExternalMemoryImageCreateInfo{ }.setHandleTypes(
+        settings.external_memory_handle_types
+    );
+    if ( settings.external_memory_handle_types )
+    {
+        image_info.setPNext( &external_memory_info );
+    }
+
     VK_CHECK( auto image, device_.get( ).createImageUnique( image_info ) );
     spdlog::debug( "vk::createImageUnique()" );
 

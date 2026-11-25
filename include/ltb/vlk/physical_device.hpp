@@ -11,6 +11,7 @@
 #include "ltb/vlk/vulkan.hpp"
 
 // standard
+#include <array>
 #include <set>
 
 namespace ltb::vlk
@@ -52,6 +53,16 @@ struct DeviceSettings
     vk::ImageTiling preferred_depth_tiling = vk::ImageTiling::eOptimal;
 };
 
+/// \brief Identifies a GPU and driver across processes. Memory can only be shared between
+///        devices whose identities are equal.
+struct DeviceIdentity
+{
+    std::array< uint8, VK_UUID_SIZE > device_uuid = { };
+    std::array< uint8, VK_UUID_SIZE > driver_uuid = { };
+
+    auto operator==( DeviceIdentity const& ) const -> bool = default;
+};
+
 class PhysicalDevice
 {
 public:
@@ -74,6 +85,9 @@ public:
 
     [[nodiscard( "Const getter" )]]
     auto properties( ) const -> vk::PhysicalDeviceProperties const&;
+
+    [[nodiscard( "Const computation" )]]
+    auto identity( ) const -> DeviceIdentity;
 
     [[nodiscard( "Const getter" )]]
     auto queue_families( ) const -> QueueFamilyMap const&;
