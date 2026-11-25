@@ -56,7 +56,35 @@ then runs all tests on lavapipe with the validation layer enabled.
 | `particles-app`  | Compute-shader particle simulation                                          |
 | `particles2-app` | Particle simulation with fixed-step compute updates                         |
 | `headless-app`   | Runs the update loop with no window or GPU                                  |
+| `share-app`      | Shares rendered output between processes (Linux only, see below)            |
 | `raw-app`        | GLFW/OpenGL scratch app (built only if OpenGL is found)                     |
+
+## Sharing output between processes
+
+`share-app` shows how separate processes can render on the GPU and share the results
+without copying them through the CPU. Start one display, then any number of producers:
+
+```bash
+./build/src/ltb/apps/share-app --display          # Opens a window
+./build/src/ltb/apps/share-app --share            # Run in as many terminals as you like
+./build/src/ltb/apps/share-app --share --hue 0.3 --size 256 --fps 30
+```
+
+Each producer renders offscreen into images whose memory is exported as file descriptors
+(`VK_KHR_external_memory_fd`). It sends those descriptors to the display over a Unix domain
+socket (`SCM_RIGHTS`), and the display imports the memory and draws every producer as a tile.
+
+* Producers double-buffer. A producer only renders into an image after the display has
+  released it, and each hand-off uses a queue family ownership transfer through
+  `VK_QUEUE_FAMILY_EXTERNAL`, so the display never reads a half-written frame.
+* Memory can only be shared on the same GPU and driver. The display checks each producer's
+  device and driver UUIDs and rejects mismatches with a message explaining why.
+* `--socket <path>` picks the socket (default `$XDG_RUNTIME_DIR/ltb-vlk-share.sock`). Ctrl+C
+  shuts either mode down cleanly.
+
+The reusable pieces live in the library: `ltb/ipc/unix_socket.hpp` (passing file
+descriptors), and `export_handle_types`, `import_fd` and `DeviceMemory::export_fd()` for
+external memory.
 
 ### Useful References
 

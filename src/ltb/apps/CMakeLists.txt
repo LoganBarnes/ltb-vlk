@@ -29,6 +29,11 @@ ltb_make_app(objs)
 ltb_make_app(particles)
 ltb_make_app(particles2)
 
+# Shares rendered output between processes with Vulkan external memory and Unix sockets.
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  ltb_make_app(share)
+endif ()
+
 if (TARGET ltb_ogl::loader)
   ltb_make_app(raw)
   target_link_libraries(
