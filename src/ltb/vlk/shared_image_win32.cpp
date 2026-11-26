@@ -42,7 +42,7 @@ auto import_memory( DeviceMemory& memory, DeviceMemorySettings settings, ipc::Na
     auto const import_info = vk::ImportMemoryWin32HandleInfoKHR{ }
                                  .setHandleType( external_memory_handle_type( ) )
                                  .setHandle( static_cast< HANDLE >( handle.get( ) ) );
-    settings.p_next = &import_info;
+    settings.p_next        = &import_info;
 
     // Unlike file descriptors, importing an NT handle doesn't give it to Vulkan: the caller
     // still owns it and closes it (WinHandle does when it goes out of scope).

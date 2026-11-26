@@ -113,9 +113,9 @@ auto main( int const argc, char const* const* const argv ) -> int
 
         // Spread hues out so producers started one after another look different.
         constexpr auto golden_ratio_fraction = 0.618034F;
-        auto const     hue                   = ( parsed.count( "hue" ) > 0U )
-                                                 ? parsed[ "hue" ].as< ltb::float32 >( )
-                                                 : std::fmod(
+        auto const hue = ( parsed.count( "hue" ) > 0U )
+                           ? parsed[ "hue" ].as< ltb::float32 >( )
+                           : std::fmod(
                                  static_cast< ltb::float32 >( ltb::share::current_process_id( ) )
                                      * golden_ratio_fraction,
                                  1.0F

@@ -79,9 +79,9 @@ auto DeviceMemory::initialize( DeviceMemorySettings const settings ) -> utils::R
     // Optional structs are linked into the pNext chain only when used.
     auto export_info
         = vk::ExportMemoryAllocateInfo{ }.setHandleTypes( settings.export_handle_types );
-    auto import_info = vk::ImportMemoryFdInfoKHR{ }
-                           .setHandleType( vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd )
-                           .setFd( settings.import_fd.value_or( -1 ) );
+    auto import_info    = vk::ImportMemoryFdInfoKHR{ }
+                              .setHandleType( vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd )
+                              .setFd( settings.import_fd.value_or( -1 ) );
     auto dedicated_info = vk::MemoryDedicatedAllocateInfo{ }.setImage( settings.dedicated_image );
 
     auto const prepend = [ &alloc_info ]( auto& info ) -> void {

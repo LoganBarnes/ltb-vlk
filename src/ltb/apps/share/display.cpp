@@ -129,8 +129,10 @@ auto ShareDisplay::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
         std::back_inserter( gpu_settings.device.extensions )
     );
     LTB_CHECK( gpu_.initialize( std::move( gpu_settings ) ) );
-    spdlog::
-        info( "Displaying on {}", std::string( gpu_.physical_device( ).properties( ).deviceName.data( ) ) );
+    spdlog::info(
+        "Displaying on {}",
+        std::string( gpu_.physical_device( ).properties( ).deviceName.data( ) )
+    );
 
     auto const& queues = gpu_.device( ).queues( );
     LTB_CHECK_VALID( queues.contains( vlk::QueueType::Graphics ) );
@@ -560,8 +562,8 @@ auto ShareDisplay::record_copies( vlk::objs::FrameInfo const& frame ) -> void
 
         auto const& extent = texture.settings( ).extent;
         auto const  layers = vk::ImageSubresourceLayers{ }
-                                .setAspectMask( vk::ImageAspectFlagBits::eColor )
-                                .setLayerCount( 1U );
+                                 .setAspectMask( vk::ImageAspectFlagBits::eColor )
+                                 .setLayerCount( 1U );
         commands.copyImage(
             shared.get( ),
             vk::ImageLayout::eTransferSrcOptimal,

@@ -151,10 +151,10 @@ auto ObjsAppPipeline::initialize_mesh(
     auto& mesh_data = mesh_data_.emplace_back( gpu_ );
 
     LTB_CHECK( mesh_data.vbo.initialize( {
-        .layout       = std::move( vbo_layout ),
-        .buffer_usage = vk::BufferUsageFlagBits::eVertexBuffer
-                      | vk::BufferUsageFlagBits::eIndexBuffer
-                      | vk::BufferUsageFlagBits::eTransferDst,
+        .layout             = std::move( vbo_layout ),
+        .buffer_usage       = vk::BufferUsageFlagBits::eVertexBuffer
+                            | vk::BufferUsageFlagBits::eIndexBuffer
+                            | vk::BufferUsageFlagBits::eTransferDst,
         .memory_properties  = vk::MemoryPropertyFlagBits::eDeviceLocal,
         .store_mapped_value = false,
     } ) );

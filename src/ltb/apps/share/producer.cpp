@@ -62,8 +62,10 @@ auto ShareProducer::initialize( ) -> utils::Result< exec::UpdateLoopStatus >
     LTB_CHECK( gpu_.initialize( {
         .device = { .extensions = vlk::shared_image_device_extensions( ) },
     } ) );
-    spdlog::
-        info( "Rendering on {}", std::string( gpu_.physical_device( ).properties( ).deviceName.data( ) ) );
+    spdlog::info(
+        "Rendering on {}",
+        std::string( gpu_.physical_device( ).properties( ).deviceName.data( ) )
+    );
 
     LTB_CHECK_VALID( gpu_.device( ).queues( ).contains( vlk::QueueType::Graphics ) );
     graphics_queue_ = gpu_.device( ).queues( ).at( vlk::QueueType::Graphics );
@@ -208,7 +210,7 @@ auto ShareProducer::initialize_graphics( ) -> utils::Result< void >
 
     LTB_CHECK( command_pool_.initialize( ) );
     LTB_CHECK( command_buffer_.initialize( ) );
-    LTB_CHECK( render_fence_.initialize( { .flags = {} } ) );
+    LTB_CHECK( render_fence_.initialize( { .flags = { } } ) );
 
     return utils::success( );
 }

@@ -209,10 +209,10 @@ TEST_F( ExternalMemoryTest, ImportedImageSeesExportedPixels )
 
     auto       imported_memory = DeviceMemory{ importer_.device( ) };
     auto const imported        = imported_memory.initialize( {
-               .allocation_size   = requirements.size,
-               .memory_type_index = memory_type.value( ),
-               .import_fd         = exported_fd.value( ),
-               .dedicated_image   = imported_image.get( ),
+        .allocation_size   = requirements.size,
+        .memory_type_index = memory_type.value( ),
+        .import_fd         = exported_fd.value( ),
+        .dedicated_image   = imported_image.get( ),
     } );
     if ( !imported )
     {

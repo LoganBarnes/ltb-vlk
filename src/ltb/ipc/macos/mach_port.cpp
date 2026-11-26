@@ -147,12 +147,8 @@ auto MachReceiveRight::is_valid( ) const -> bool
 auto MachReceiveRight::make_send_right( ) const -> utils::Result< MachSendRight >
 {
     LTB_CHECK_VALID( this->is_valid( ) );
-    auto const result = ::mach_port_insert_right(
-        ::mach_task_self( ),
-        port_,
-        port_,
-        MACH_MSG_TYPE_MAKE_SEND
-    );
+    auto const result
+        = ::mach_port_insert_right( ::mach_task_self( ), port_, port_, MACH_MSG_TYPE_MAKE_SEND );
     if ( KERN_SUCCESS != result )
     {
         return LTB_MAKE_UNEXPECTED_ERROR(

@@ -115,8 +115,8 @@ auto Device::initialize( ) -> utils::Result< void >
     device_                    = std::move( device );
     fifo_latest_ready_enabled_ = fifo_latest_ready_supported;
     queues_                    = physical_device_.queue_families( )
-            | std::ranges::views::transform( MakeQueuePair{ device_ } )
-            | std::ranges::to< QueueMap >( );
+                               | std::ranges::views::transform( MakeQueuePair{ device_ } )
+                               | std::ranges::to< QueueMap >( );
 
     return utils::success( );
 }

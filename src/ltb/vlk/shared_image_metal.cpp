@@ -95,10 +95,8 @@ auto bind_memory( Device& device, Image const& image, DeviceMemory& memory )
     auto const requirements = image.memory_requirements( );
     LTB_CHECK(
         auto const memory_type_index,
-        device.physical_device( ).find_memory_type_index(
-            { requirements },
-            vk::MemoryPropertyFlagBits::eDeviceLocal
-        )
+        device.physical_device( )
+            .find_memory_type_index( { requirements }, vk::MemoryPropertyFlagBits::eDeviceLocal )
     );
     LTB_CHECK( memory.initialize( {
         .allocation_size   = requirements.size,

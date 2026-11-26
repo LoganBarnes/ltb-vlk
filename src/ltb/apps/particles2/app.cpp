@@ -350,10 +350,10 @@ auto Particles2App::initialize_particles( ) -> utils::Result< Particles2App* >
     );
 
     LTB_CHECK( gpu_particles_.initialize( {
-        .layout       = std::move( gpu_particles_layout ),
-        .buffer_usage = vk::BufferUsageFlagBits::eStorageBuffer
-                      | vk::BufferUsageFlagBits::eVertexBuffer
-                      | vk::BufferUsageFlagBits::eTransferDst,
+        .layout             = std::move( gpu_particles_layout ),
+        .buffer_usage       = vk::BufferUsageFlagBits::eStorageBuffer
+                            | vk::BufferUsageFlagBits::eVertexBuffer
+                            | vk::BufferUsageFlagBits::eTransferDst,
         .memory_properties  = vk::MemoryPropertyFlagBits::eDeviceLocal,
         .store_mapped_value = false,
     } ) );

@@ -201,7 +201,8 @@ Channel::Channel( MachReceiveRight receive_port, MachSendRight peer_port )
 auto Channel::connect( ChannelAddress const& address ) -> utils::Result< Channel >
 {
     auto listener_port = mach_port_t{ MACH_PORT_NULL };
-    if ( auto const result = ::bootstrap_look_up( bootstrap_port, address.c_str( ), &listener_port );
+    if ( auto const result
+         = ::bootstrap_look_up( bootstrap_port, address.c_str( ), &listener_port );
          BOOTSTRAP_SUCCESS != result )
     {
         return LTB_MAKE_UNEXPECTED_ERROR(
@@ -220,10 +221,10 @@ auto Channel::connect( ChannelAddress const& address ) -> utils::Result< Channel
     auto message = ConnectMessage{ };
     message.header.msgh_bits
         = MACH_MSGH_BITS_SET( MACH_MSG_TYPE_COPY_SEND, 0U, 0U, MACH_MSGH_BITS_COMPLEX );
-    message.header.msgh_size        = sizeof( message );
-    message.header.msgh_remote_port = listener.get( );
-    message.header.msgh_local_port  = MACH_PORT_NULL;
-    message.header.msgh_id          = connect_message_id;
+    message.header.msgh_size           = sizeof( message );
+    message.header.msgh_remote_port    = listener.get( );
+    message.header.msgh_local_port     = MACH_PORT_NULL;
+    message.header.msgh_id             = connect_message_id;
     message.body.msgh_descriptor_count = 2U;
 
     message.client_port.name        = receive_port.get( );
@@ -293,15 +294,18 @@ auto Channel::send(
     auto buffer = MessageBuffer{ message_size };
 
     auto* const header = buffer.header( );
-    header->msgh_bits = MACH_MSGH_BITS_SET( MACH_MSG_TYPE_COPY_SEND, 0U, 0U, MACH_MSGH_BITS_COMPLEX );
-    header->msgh_size = static_cast< mach_msg_size_t >( message_size );
+    header->msgh_bits
+        = MACH_MSGH_BITS_SET( MACH_MSG_TYPE_COPY_SEND, 0U, 0U, MACH_MSGH_BITS_COMPLEX );
+    header->msgh_size        = static_cast< mach_msg_size_t >( message_size );
     header->msgh_remote_port = peer_port_.get( );
     header->msgh_local_port  = MACH_PORT_NULL;
     header->msgh_id          = data_message_id;
 
     buffer.write(
         sizeof( mach_msg_header_t ),
-        mach_msg_body_t{ .msgh_descriptor_count = static_cast< mach_msg_size_t >( handles.size( ) ) }
+        mach_msg_body_t{
+            .msgh_descriptor_count = static_cast< mach_msg_size_t >( handles.size( ) )
+        }
     );
     for ( auto i = 0UZ; i < handles.size( ); ++i )
     {
@@ -311,10 +315,17 @@ auto Channel::send(
         descriptor.type        = MACH_MSG_PORT_DESCRIPTOR;
         buffer.write( descriptors_offset + ( i * sizeof( descriptor ) ), descriptor );
     }
-    buffer.write( payload_size_offset( handles.size( ) ), static_cast< mach_msg_size_t >( bytes.size( ) ) );
+    buffer.write(
+        payload_size_offset( handles.size( ) ),
+        static_cast< mach_msg_size_t >( bytes.size( ) )
+    );
     if ( !bytes.empty( ) )
     {
-        std::memcpy( buffer.bytes( ) + payload_offset( handles.size( ) ), bytes.data( ), bytes.size( ) );
+        std::memcpy(
+            buffer.bytes( ) + payload_offset( handles.size( ) ),
+            bytes.data( ),
+            bytes.size( )
+        );
     }
 
     // Never wait: a full queue (over a thousand unread messages) is reported as an error.
@@ -340,7 +351,9 @@ auto Channel::send(
         case MACH_SEND_INTERRUPTED:
             // The kernel gave the copied rights back; release them again.
             ::mach_msg_destroy( header );
-            return LTB_MAKE_UNEXPECTED_ERROR( "the receiver isn't reading its messages (queue full)" );
+            return LTB_MAKE_UNEXPECTED_ERROR(
+                "the receiver isn't reading its messages (queue full)"
+            );
 
         default:
             return tl::make_unexpected( mach_error( "mach_msg (send)", result ) );
@@ -398,7 +411,7 @@ auto Channel::receive( std::span< std::byte > const buffer ) const -> utils::Res
         {
             return fail( "unexpected message type" );
         }
-        auto const body = message.read< mach_msg_body_t >( sizeof( mach_msg_header_t ) );
+        auto const body         = message.read< mach_msg_body_t >( sizeof( mach_msg_header_t ) );
         auto const handle_count = std::size_t{ body.msgh_descriptor_count };
         if ( handle_count > max_handles_per_message )
         {
@@ -421,9 +434,8 @@ auto Channel::receive( std::span< std::byte > const buffer ) const -> utils::Res
             }
         }
 
-        auto const payload_size = std::size_t{
-            message.read< mach_msg_size_t >( payload_size_offset( handle_count ) )
-        };
+        auto const payload_size
+            = std::size_t{ message.read< mach_msg_size_t >( payload_size_offset( handle_count ) ) };
         if ( payload_offset( handle_count ) + payload_size > header->msgh_size )
         {
             return fail( "payload size doesn't match the message size" );
@@ -439,7 +451,11 @@ auto Channel::receive( std::span< std::byte > const buffer ) const -> utils::Res
         };
         if ( payload_size > 0U )
         {
-            std::memcpy( buffer.data( ), message.bytes( ) + payload_offset( handle_count ), payload_size );
+            std::memcpy(
+                buffer.data( ),
+                message.bytes( ) + payload_offset( handle_count ),
+                payload_size
+            );
         }
         received.message.handles.reserve( handle_count );
         for ( auto i = 0UZ; i < handle_count; ++i )
@@ -474,7 +490,8 @@ auto ChannelListener::listen( ChannelAddress const& address ) -> utils::Result< 
     // denied" if another process did. Check whether the name is taken to tell them apart.
     auto const name_is_taken = [ &address ]( ) {
         auto existing = mach_port_t{ MACH_PORT_NULL };
-        if ( BOOTSTRAP_SUCCESS != ::bootstrap_look_up( bootstrap_port, address.c_str( ), &existing ) )
+        if ( BOOTSTRAP_SUCCESS
+             != ::bootstrap_look_up( bootstrap_port, address.c_str( ), &existing ) )
         {
             return false;
         }
@@ -484,10 +501,7 @@ auto ChannelListener::listen( ChannelAddress const& address ) -> utils::Result< 
     if ( ( BOOTSTRAP_SUCCESS != result )
          && ( ( BOOTSTRAP_SERVICE_ACTIVE == result ) || name_is_taken( ) ) )
     {
-        return LTB_MAKE_UNEXPECTED_ERROR(
-            "Another process is already listening at '{}'",
-            address
-        );
+        return LTB_MAKE_UNEXPECTED_ERROR( "Another process is already listening at '{}'", address );
     }
     if ( BOOTSTRAP_SUCCESS != result )
     {

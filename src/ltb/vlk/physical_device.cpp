@@ -103,7 +103,7 @@ auto PhysicalDevice::initialize( DeviceSettings settings, Surface const* const s
 
         // Portability drivers (MoltenVK) require VK_KHR_portability_subset to be enabled,
         // so add it even when the caller replaced the default extension list.
-        constexpr auto portability_subset = std::string_view{ "VK_KHR_portability_subset" };
+        constexpr auto portability_subset    = std::string_view{ "VK_KHR_portability_subset" };
         auto const     is_portability_subset = [ portability_subset ]( char const* const name ) {
             return std::string_view{ name } == portability_subset;
         };
@@ -163,8 +163,10 @@ auto PhysicalDevice::initialize( DeviceSettings settings, Surface const* const s
     queue_families_        = std::move( selected_device.queue_families );
     unique_queue_families_ = queue_families_ | std::views::values | std::ranges::to< std::set >( );
 
-    spdlog::
-        info( "Selected device {}", std::string( physical_device_.getProperties( ).deviceName.data( ) ) );
+    spdlog::info(
+        "Selected device {}",
+        std::string( physical_device_.getProperties( ).deviceName.data( ) )
+    );
 
     return utils::success( );
 }

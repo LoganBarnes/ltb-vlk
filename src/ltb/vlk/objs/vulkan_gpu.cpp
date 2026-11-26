@@ -38,7 +38,9 @@ auto VulkanGpu::initialize( VulkanGpuSettings settings ) -> utils::Result< void 
 
         LTB_CHECK( instance_.initialize( std::move( settings.instance ), glfw_context_ ) );
         LTB_CHECK( surface_->initialize( ) );
-        LTB_CHECK( physical_device_.initialize( std::move( settings.device ), &surface_.value( ) ) );
+        LTB_CHECK(
+            physical_device_.initialize( std::move( settings.device ), &surface_.value( ) )
+        );
     }
     else
     {

@@ -117,14 +117,23 @@ struct TestObject
             mach_msg_header_t      header;
             mach_msg_max_trailer_t trailer;
         };
-        auto sent = mach_msg_header_t{ };
+
+        auto sent             = mach_msg_header_t{ };
         sent.msgh_bits        = MACH_MSGH_BITS_SET( MACH_MSG_TYPE_COPY_SEND, 0U, 0U, 0U );
         sent.msgh_size        = sizeof( sent );
         sent.msgh_remote_port = copy.get( );
         sent.msgh_id          = 1234;
         auto received         = Received{ };
         return ( MACH_MSG_SUCCESS
-                 == ::mach_msg( &sent, MACH_SEND_MSG, sizeof( sent ), 0U, MACH_PORT_NULL, 0U, MACH_PORT_NULL ) )
+                 == ::mach_msg(
+                     &sent,
+                     MACH_SEND_MSG,
+                     sizeof( sent ),
+                     0U,
+                     MACH_PORT_NULL,
+                     0U,
+                     MACH_PORT_NULL
+                 ) )
             && ( MACH_MSG_SUCCESS
                  == ::mach_msg(
                      &received.header,
@@ -183,7 +192,7 @@ TEST_F( ChannelTest, AcceptWithoutAClientReturnsNothing )
 
 TEST_F( ChannelTest, RejectsInvalidHandles )
 {
-    auto const invalid = std::array{ NativeHandle{} };
+    auto const invalid = std::array{ NativeHandle{ } };
     EXPECT_FALSE( client_.send_value( Ping{ }, invalid ).has_value( ) );
 }
 

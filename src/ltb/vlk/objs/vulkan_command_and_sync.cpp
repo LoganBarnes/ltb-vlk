@@ -235,8 +235,8 @@ auto VulkanCommandAndSync::end_frame(
 {
     auto const wait_semaphores = wait_until_signaled | std::views::transform( GetSemaphore{ } )
                                | std::ranges::to< std::vector >( );
-    auto const wait_stages = wait_until_signaled | std::views::transform( GetStage{ } )
-                           | std::ranges::to< std::vector >( );
+    auto const wait_stages     = wait_until_signaled | std::views::transform( GetStage{ } )
+                               | std::ranges::to< std::vector >( );
 
     auto const submit_info = vk::SubmitInfo{ }
                                  .setWaitSemaphores( wait_semaphores )
