@@ -92,9 +92,7 @@ then run on macOS 27.2 with an Apple M1 on 25 Nov 2026:
 
 ### Still to do
 
-1. Add a macOS job to CI (`macos-latest` runners are Apple Silicon. They can run MoltenVK, but
-   whether the hosted runners expose a usable Metal device for the GPU tests hasn't been checked).
-2. Only tested on Apple Silicon. On Intel Macs with discrete GPUs, IOSurface-backed textures may
+1. Only tested on Apple Silicon. On Intel Macs with discrete GPUs, IOSurface-backed textures may
    need managed storage and explicit synchronization.
 
 ### Things to watch

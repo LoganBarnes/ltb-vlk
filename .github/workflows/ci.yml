@@ -107,3 +107,77 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+  macos:
+    name: macos-apple-clang
+    # Apple Silicon. Its virtual GPU runs Metal, so MoltenVK can run the GPU tests.
+    runs-on: macos-26
+
+    env:
+      CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install packages
+        run: |
+          # MoltenVK, the loader, headers, glslc (shaderc) and the validation layer, instead
+          # of the LunarG SDK installer.
+          brew install ninja molten-vk vulkan-loader vulkan-headers shaderc vulkan-validationlayers
+
+      - name: Set up Vulkan environment
+        run: |
+          icd="$(find "$(brew --prefix molten-vk)/" -name 'MoltenVK_icd.json' | head -n 1)"
+          test -n "$icd"
+
+          # Homebrew's layer manifest names the library without a path, which the loader
+          # can't dlopen. Use a copy with the full path (VK_LAYER_PATH also stops the loader
+          # finding Homebrew's manifest twice).
+          layer_prefix="$(brew --prefix vulkan-validationlayers)"
+          layer_library="$layer_prefix/lib/libVkLayer_khronos_validation.dylib"
+          test -f "$layer_library"
+          layer_dir="$RUNNER_TEMP/vulkan-layers"
+          mkdir -p "$layer_dir"
+          sed -E "s|\"library_path\": *\"[^\"]*\"|\"library_path\": \"$layer_library\"|" \
+            "$layer_prefix/share/vulkan/explicit_layer.d/VkLayer_khronos_validation.json" \
+            > "$layer_dir/VkLayer_khronos_validation.json"
+          grep library_path "$layer_dir/VkLayer_khronos_validation.json"
+
+          {
+            echo "VK_DRIVER_FILES=$icd"
+            echo "VK_LAYER_PATH=$layer_dir"
+            echo "LTB_VLK_REQUIRE_GPU=1"
+          } >> "$GITHUB_ENV"
+
+      - name: Cache CPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-macos-${{ hashFiles('cmake/ThirdParty.cmake', 'cmake/CPM.cmake') }}
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_PREFIX_PATH="$(brew --prefix)"
+          -DLTB_VLK_USE_STRICT_FLAGS=ON
+          -DLTB_VLK_BUILD_EXAMPLES=ON
+          -DLTB_VLK_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: |
+          if ! ctest --test-dir build --output-on-failure; then
+            # Show each failure in the run's summary, so it can be seen without the log.
+            while read -r test; do
+              name="${test#*:}"
+              output="$(ctest --test-dir build -R "^${name}\$" --output-on-failure 2>&1 \
+                | grep -v -E 'debug\]|^ *$' | tail -n 25)"
+              output="${output//'%'/'%25'}"
+              output="${output//$'\n'/'%0A'}"
+              echo "::error title=${name}::${output}"
+            done < build/Testing/Temporary/LastTestsFailed.log
+            exit 1
+          fi
