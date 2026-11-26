@@ -9,16 +9,23 @@
 #include "ltb/vlk/vulkan.hpp"
 
 // standard
+#include <cstdint>
 #include <filesystem>
+#include <vector>
 
 namespace ltb::vlk
 {
 
 struct ShaderModuleSettings
 {
-    std::filesystem::path   spirv_file = { };
-    vk::ShaderStageFlagBits stage      = { };
-    char const*             name       = "main";
+    /// \brief The compiled shader to load from disk. Ignored if `spirv_code` isn't empty.
+    std::filesystem::path spirv_file = { };
+
+    /// \brief The compiled shader, for shaders that are embedded in the executable.
+    std::vector< std::uint32_t > spirv_code = { };
+
+    vk::ShaderStageFlagBits stage = { };
+    char const*             name  = "main";
 };
 
 class ShaderModule

@@ -6,6 +6,7 @@
 // project
 #include "ltb/vlk/check.hpp"
 #include "ltb/vlk/instance.hpp"
+#include "ltb/window/glfw_window.hpp"
 
 // external
 #include <spdlog/spdlog.h>
@@ -14,7 +15,13 @@ namespace ltb::vlk
 {
 
 Surface::Surface( window::GlfwWindow& glfw_window, Instance& instance )
-    : glfw_window_( glfw_window )
+    : glfw_window_( &glfw_window )
+    , instance_( instance )
+{
+}
+
+Surface::Surface( GLFWwindow* const window, Instance& instance )
+    : external_window_( window )
     , instance_( instance )
 {
 }
@@ -25,13 +32,13 @@ auto Surface::initialize( ) -> utils::Result< void >
     {
         return utils::success( );
     }
-    LTB_CHECK_VALID( glfw_window_.is_initialized( ) );
+    LTB_CHECK_VALID( nullptr != this->window( ) );
     LTB_CHECK_VALID( instance_.is_initialized( ) );
 
     auto* surface = VkSurfaceKHR{ };
     VK_CHECK(
         vk::Result{
-            ::glfwCreateWindowSurface( instance_.get( ), glfw_window_.get( ), nullptr, &surface )
+            ::glfwCreateWindowSurface( instance_.get( ), this->window( ), nullptr, &surface )
         }
     );
 
@@ -60,12 +67,17 @@ auto Surface::framebuffer_size( ) const -> vk::Extent2D
 {
     auto width  = 0;
     auto height = 0;
-    ::glfwGetFramebufferSize( glfw_window_.get( ), &width, &height );
+    ::glfwGetFramebufferSize( this->window( ), &width, &height );
 
     return {
         static_cast< uint32 >( width ),
         static_cast< uint32 >( height ),
     };
+}
+
+auto Surface::window( ) const -> GLFWwindow*
+{
+    return ( nullptr != glfw_window_ ) ? glfw_window_->get( ) : external_window_;
 }
 
 } // namespace ltb::vlk

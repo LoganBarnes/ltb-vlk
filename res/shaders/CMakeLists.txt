@@ -1,17 +1,26 @@
 # ##############################################################################
 # A Logan Thomas Barnes project
 # ##############################################################################
-file(
-  GLOB_RECURSE LtbVlk_SHADERS
-  LIST_DIRECTORIES false
-  CONFIGURE_DEPENDS
-  ${CMAKE_CURRENT_LIST_DIR}/*.vert
-  ${CMAKE_CURRENT_LIST_DIR}/*.geom
-  ${CMAKE_CURRENT_LIST_DIR}/*.tesc
-  ${CMAKE_CURRENT_LIST_DIR}/*.tese
-  ${CMAKE_CURRENT_LIST_DIR}/*.frag
-  ${CMAKE_CURRENT_LIST_DIR}/*.comp
-)
+if( LTB_VLK_BUILD_EXAMPLES )
+  file(
+    GLOB_RECURSE LtbVlk_SHADERS
+    LIST_DIRECTORIES false
+    CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_LIST_DIR}/*.vert
+    ${CMAKE_CURRENT_LIST_DIR}/*.geom
+    ${CMAKE_CURRENT_LIST_DIR}/*.tesc
+    ${CMAKE_CURRENT_LIST_DIR}/*.tese
+    ${CMAKE_CURRENT_LIST_DIR}/*.frag
+    ${CMAKE_CURRENT_LIST_DIR}/*.comp
+  )
+else()
+  # Only the shaders the library itself loads (vlk::dd::LinesPipeline2).
+  set(
+    LtbVlk_SHADERS
+    ${CMAKE_CURRENT_LIST_DIR}/lines_2d.vert
+    ${CMAKE_CURRENT_LIST_DIR}/lines_2d.frag
+  )
+endif()
 file(
   GLOB_RECURSE LtbVlk_SHADER_INCLUDES
   LIST_DIRECTORIES false

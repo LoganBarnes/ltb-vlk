@@ -30,8 +30,26 @@ cmake --build build
 | `LTB_VLK_BUILD_EXAMPLES`   | `OFF`   | Build the example apps in `src/ltb/apps`                      |
 | `LTB_VLK_BUILD_TESTS`      | `OFF`   | Build the GoogleTest suites in `tests`                        |
 | `LTB_VLK_USE_STRICT_FLAGS` | `OFF`   | Treat warnings as errors (only for this project's own targets) |
+| `LTB_VLK_BUILD_GUI`        | `ON`    | Build the ImGui integration (`ltb/gui`, `cam::Camera2d`). The examples need it |
 
 Shaders in `res/shaders` are compiled to SPIR-V in `<build>/shaders` as part of the build.
+Without `LTB_VLK_BUILD_EXAMPLES` only the shaders the library loads itself are compiled.
+
+## Using it from another project
+
+The library can be added with CPM or `add_subdirectory`. A project that already defines the
+`glfw::glfw`, `glm::glm`, `imgui::imgui`, `tl::expected`, `magic_enum::magic_enum`,
+`spdlog::spdlog` or `cxxopts::cxxopts` packages through CPM keeps its own versions if it adds
+them first. Set `LTB_VLK_BUILD_GUI=OFF` if its ImGui is older than the one this library uses.
+
+A project with its own GLFW window passes the raw handle instead of a `window::GlfwWindow`:
+
+```cpp
+auto gpu = ltb::vlk::objs::VulkanGpu{ glfw_window }; // GLFWwindow*, created with GLFW_NO_API
+```
+
+Shaders embedded in the executable are loaded with `ShaderModuleSettings::spirv_code`
+instead of `spirv_file`.
 
 ## Tests
 

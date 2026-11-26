@@ -30,11 +30,23 @@ option(
   "Build unit and GPU tests"
   OFF
 )
+option(
+  LTB_VLK_BUILD_GUI
+  "Build the ImGui integration (ltb::gui, cam::Camera2d). Turn off to use this library without ImGui."
+  ON
+)
+
+if (LTB_VLK_BUILD_EXAMPLES AND NOT LTB_VLK_BUILD_GUI)
+  message(FATAL_ERROR "LTB_VLK_BUILD_EXAMPLES needs LTB_VLK_BUILD_GUI: the example apps use ImGui.")
+endif ()
 
 # ##############################################################################
 # CMake Package Manager
 # ##############################################################################
-include(cmake/CPM.cmake)
+# A parent project that already uses CPM keeps its own version.
+if (NOT COMMAND cpmaddpackage)
+  include(cmake/CPM.cmake)
+endif ()
 
 # ##############################################################################
 # External Packages
@@ -66,14 +78,26 @@ file(
   LIST_DIRECTORIES
   false
   CONFIGURE_DEPENDS
-  ${CMAKE_CURRENT_LIST_DIR}/src/ltb/cam/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/display/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/geom/*.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/src/ltb/gui/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/utils/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/vlk/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/ltb/window/*.cpp
 )
+
+# Everything that needs ImGui (cam::Camera2d reads its input from ImGui).
+if (LTB_VLK_BUILD_GUI)
+  file(
+    GLOB_RECURSE
+    LtbVlk_GUI_SOURCE_FILES
+    LIST_DIRECTORIES
+    false
+    CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_LIST_DIR}/src/ltb/cam/*.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/ltb/gui/*.cpp
+  )
+  list(APPEND LtbVlk_CORE_SOURCE_FILES ${LtbVlk_GUI_SOURCE_FILES})
+endif ()
 
 # Inter-process communication (ipc::Channel) has a backend per platform.
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -112,10 +136,12 @@ target_link_libraries(
   LtbVlk::generate_spirv
   # Graphics
   Vulkan::Vulkan
+  # Windowing
+  glfw::glfw
   # Geometry
   glm::glm
   # Gui
-  imgui::imgui
+  $<$<BOOL:${LTB_VLK_BUILD_GUI}>:imgui::imgui>
   # Utils
   Threads::Threads
   tl::expected
@@ -238,7 +264,7 @@ if (LTB_VLK_BUILD_EXAMPLES)
     # Library allowing OpenGL functions to be loaded at runtime.
     add_library(
       ltb_ogl_loader
-      ${CMAKE_CURRENT_LIST_DIR}/external/src/GL/gl3w.c
+      ${CMAKE_CURRENT_LIST_DIR}/external/gl3w/src/GL/gl3w.c
     )
     add_library(
       ltb_ogl::loader
@@ -254,7 +280,9 @@ if (LTB_VLK_BUILD_EXAMPLES)
       ltb_ogl_loader
       SYSTEM
       PUBLIC
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/external/include>
+      # Kept out of the library's include path so the OpenGL headers
+      # don't shadow the ones a parent project uses.
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/external/gl3w/include>
     )
   endif ()
 

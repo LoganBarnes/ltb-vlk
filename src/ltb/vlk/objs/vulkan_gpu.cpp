@@ -10,10 +10,48 @@
 #include "ltb/window/glfw_window.hpp"
 
 // external
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
+
+// standard
+#include <algorithm>
+#include <span>
+#include <string_view>
 
 namespace ltb::vlk::objs
 {
+namespace
+{
+
+/// \brief Adds the instance extensions GLFW needs to create a surface, skipping duplicates.
+auto append_glfw_instance_extensions( std::vector< char const* >& extensions )
+    -> utils::Result< void >
+{
+    auto               count         = uint32_t{ 0 };
+    auto const** const glfw_required = ::glfwGetRequiredInstanceExtensions( &count );
+    if ( nullptr == glfw_required )
+    {
+        return LTB_MAKE_UNEXPECTED_ERROR(
+            "::glfwGetRequiredInstanceExtensions() failed: GLFW isn't initialized or Vulkan "
+            "surfaces aren't supported"
+        );
+    }
+
+    for ( auto const* const required : std::span{ glfw_required, count } )
+    {
+        auto const same_name = [ required ]( char const* const extension ) {
+            return std::string_view{ extension } == required;
+        };
+        if ( std::ranges::none_of( extensions, same_name ) )
+        {
+            extensions.push_back( required );
+        }
+    }
+    return utils::success( );
+}
+
+} // namespace
 
 VulkanGpu::VulkanGpu( ) = default;
 
@@ -22,6 +60,12 @@ VulkanGpu::VulkanGpu( window::GlfwContext& glfw_context, window::GlfwWindow& glf
     , glfw_window_( &glfw_window )
 {
     surface_.emplace( glfw_window, instance_ );
+}
+
+VulkanGpu::VulkanGpu( GLFWwindow* const window )
+    : external_window_( window )
+{
+    surface_.emplace( window, instance_ );
 }
 
 auto VulkanGpu::initialize( VulkanGpuSettings settings ) -> utils::Result< void >
@@ -33,8 +77,16 @@ auto VulkanGpu::initialize( VulkanGpuSettings settings ) -> utils::Result< void 
 
     if ( this->has_surface( ) )
     {
-        LTB_CHECK_VALID( glfw_context_->is_initialized( ) );
-        LTB_CHECK_VALID( glfw_window_->is_initialized( ) );
+        if ( nullptr != glfw_context_ )
+        {
+            LTB_CHECK_VALID( glfw_context_->is_initialized( ) );
+            LTB_CHECK_VALID( glfw_window_->is_initialized( ) );
+        }
+        else
+        {
+            LTB_CHECK_VALID( nullptr != external_window_ );
+            LTB_CHECK( append_glfw_instance_extensions( settings.instance.extensions ) );
+        }
 
         LTB_CHECK( instance_.initialize( std::move( settings.instance ), glfw_context_ ) );
         LTB_CHECK( surface_->initialize( ) );

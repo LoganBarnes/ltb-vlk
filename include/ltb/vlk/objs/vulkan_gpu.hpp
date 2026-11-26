@@ -12,6 +12,8 @@
 #include "ltb/vlk/surface.hpp"
 #include "ltb/window/fwd.hpp"
 
+struct GLFWwindow;
+
 namespace ltb::vlk::objs
 {
 
@@ -30,6 +32,11 @@ public:
 
     /// \brief A GPU capable of presenting to the given window.
     VulkanGpu( window::GlfwContext& glfw_context, window::GlfwWindow& glfw_window );
+
+    /// \brief A GPU capable of presenting to a window this library doesn't own. GLFW must
+    ///        already be initialized, the window must have been created with GLFW_CLIENT_API
+    ///        set to GLFW_NO_API, and it has to outlive this object.
+    explicit VulkanGpu( GLFWwindow* window );
 
     auto initialize( VulkanGpuSettings settings ) -> utils::Result< void >;
 
@@ -64,6 +71,7 @@ public:
 private:
     window::GlfwContext* glfw_context_ = nullptr;
     window::GlfwWindow*  glfw_window_  = nullptr;
+    GLFWwindow*          external_window_ = nullptr;
 
     Instance                 instance_        = { };
     std::optional< Surface > surface_         = std::nullopt;

@@ -17,6 +17,10 @@ function(ltb_vlk_add_test_suite directory label)
     CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_LIST_DIR}/${directory}/*_tests.cpp
   )
+  if (NOT LTB_VLK_BUILD_GUI)
+    # cam::Camera2d needs ImGui.
+    list(FILTER ${directory}_TEST_SOURCES EXCLUDE REGEX "/ltb/cam/")
+  endif ()
 
   set(target ltb_vlk_${directory}_tests)
 

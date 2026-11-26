@@ -28,21 +28,41 @@ auto ShaderModule::initialize( ShaderModuleSettings settings ) -> utils::Result<
     }
     LTB_CHECK_VALID( device_.is_initialized( ) );
 
-    LTB_CHECK( auto const code, utils::get_binary_file_contents< uint32 >( settings.spirv_file ) );
+    auto shader_module = vk::UniqueShaderModule{ };
 
-    if ( auto const file_size = std::filesystem::file_size( settings.spirv_file );
-         0U != ( file_size % sizeof( uint32 ) ) )
+    if ( !settings.spirv_code.empty( ) )
     {
-        return LTB_MAKE_UNEXPECTED_ERROR(
-            "Invalid SPIR-V file size ({} bytes) for '{}'",
-            file_size,
-            settings.spirv_file.string( )
+        auto const create_info = vk::ShaderModuleCreateInfo{ }.setCode( settings.spirv_code );
+        VK_CHECK( shader_module, device_.get( ).createShaderModuleUnique( create_info ) );
+        spdlog::debug(
+            "vk::createShaderModuleUnique() for {} embedded SPIR-V words",
+            settings.spirv_code.size( )
         );
-    }
 
-    auto const create_info = vk::ShaderModuleCreateInfo{ }.setCode( code );
-    VK_CHECK( auto shader_module, device_.get( ).createShaderModuleUnique( create_info ) );
-    spdlog::debug( "vk::createShaderModuleUnique() for '{}'", settings.spirv_file.string( ) );
+        // The module has its own copy.
+        settings.spirv_code = { };
+    }
+    else
+    {
+        LTB_CHECK(
+            auto const code,
+            utils::get_binary_file_contents< uint32 >( settings.spirv_file )
+        );
+
+        if ( auto const file_size = std::filesystem::file_size( settings.spirv_file );
+             0U != ( file_size % sizeof( uint32 ) ) )
+        {
+            return LTB_MAKE_UNEXPECTED_ERROR(
+                "Invalid SPIR-V file size ({} bytes) for '{}'",
+                file_size,
+                settings.spirv_file.string( )
+            );
+        }
+
+        auto const create_info = vk::ShaderModuleCreateInfo{ }.setCode( code );
+        VK_CHECK( shader_module, device_.get( ).createShaderModuleUnique( create_info ) );
+        spdlog::debug( "vk::createShaderModuleUnique() for '{}'", settings.spirv_file.string( ) );
+    }
 
     settings_      = std::move( settings );
     shader_module_ = std::move( shader_module );

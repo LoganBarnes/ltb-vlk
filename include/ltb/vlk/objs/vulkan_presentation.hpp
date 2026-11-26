@@ -13,6 +13,9 @@
 #include "ltb/vlk/render_pass.hpp"
 #include "ltb/vlk/swapchain.hpp"
 
+// external
+#include <glm/glm.hpp>
+
 // standard
 #include <optional>
 

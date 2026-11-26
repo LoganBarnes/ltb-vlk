@@ -7,7 +7,9 @@
 #include "ltb/utils/result.hpp"
 #include "ltb/vlk/fwd.hpp"
 #include "ltb/vlk/vulkan.hpp"
-#include "ltb/window/glfw_window.hpp"
+#include "ltb/window/fwd.hpp"
+
+struct GLFWwindow;
 
 namespace ltb::vlk
 {
@@ -16,6 +18,10 @@ class Surface
 {
 public:
     Surface( window::GlfwWindow& glfw_window, Instance& instance );
+
+    /// \brief A surface for a window this library doesn't own. The window must have been
+    ///        created with GLFW_CLIENT_API set to GLFW_NO_API and has to outlive the surface.
+    Surface( GLFWwindow* window, Instance& instance );
 
     auto initialize( ) -> utils::Result< void >;
 
@@ -30,8 +36,13 @@ public:
     auto framebuffer_size( ) const -> vk::Extent2D;
 
 private:
-    window::GlfwWindow& glfw_window_;
+    /// \brief Null if the surface was created from an external window.
+    window::GlfwWindow* glfw_window_     = nullptr;
+    GLFWwindow*         external_window_ = nullptr;
     Instance&           instance_;
+
+    [[nodiscard( "Const getter" )]]
+    auto window( ) const -> GLFWwindow*;
 
     vk::UniqueSurfaceKHR surface_ = { };
 };

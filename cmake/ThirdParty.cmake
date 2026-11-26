@@ -70,16 +70,18 @@ cpmaddpackage(
   DOWNLOAD_ONLY
   TRUE
 )
-cpmaddpackage(
-  NAME
-  imgui
-  GITHUB_REPOSITORY
-  ocornut/imgui
-  GIT_TAG
-  396b33d # docking branch Dec 23, 2025
-  DOWNLOAD_ONLY
-  TRUE
-)
+if( LTB_VLK_BUILD_GUI )
+  cpmaddpackage(
+    NAME
+    imgui
+    GITHUB_REPOSITORY
+    ocornut/imgui
+    GIT_TAG
+    396b33d # docking branch Dec 23, 2025
+    DOWNLOAD_ONLY
+    TRUE
+  )
+endif()
 cpmaddpackage( "gh:Neargye/magic_enum@0.7.3" )
 cpmaddpackage( "gh:gabime/spdlog@1.17.0" )
 
@@ -184,7 +186,7 @@ if( GLFW_ADDED )
   )
 endif()
 
-if( imgui_ADDED )
+if( LTB_VLK_BUILD_GUI AND imgui_ADDED )
   add_library(
     imgui
     ${imgui_SOURCE_DIR}/imconfig.h

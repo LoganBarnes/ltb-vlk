@@ -13,6 +13,7 @@
 // external
 #include "ltb/cam/camera_2d.hpp"
 #include "ltb/window/glfw_context.hpp"
+#include "ltb/window/glfw_window.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <spdlog/spdlog.h>
 
