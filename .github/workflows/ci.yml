@@ -107,3 +107,51 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+  macos:
+    name: macos-apple-clang
+    # Apple Silicon. Its virtual GPU runs Metal, so MoltenVK can run the GPU tests.
+    runs-on: macos-26
+
+    env:
+      CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install packages
+        run: |
+          # MoltenVK, the loader, headers, glslc (shaderc) and the validation layer, instead
+          # of the LunarG SDK installer.
+          brew install ninja molten-vk vulkan-loader vulkan-headers shaderc vulkan-validationlayers
+
+      - name: Set up Vulkan environment
+        run: |
+          icd="$(find "$(brew --prefix molten-vk)/" -name 'MoltenVK_icd.json' | head -n 1)"
+          test -n "$icd"
+          {
+            echo "VK_DRIVER_FILES=$icd"
+            echo "VK_ADD_LAYER_PATH=$(brew --prefix vulkan-validationlayers)/share/vulkan/explicit_layer.d"
+            echo "LTB_VLK_REQUIRE_GPU=1"
+          } >> "$GITHUB_ENV"
+
+      - name: Cache CPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CPM_SOURCE_CACHE }}
+          key: cpm-macos-${{ hashFiles('cmake/ThirdParty.cmake', 'cmake/CPM.cmake') }}
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_PREFIX_PATH="$(brew --prefix)"
+          -DLTB_VLK_USE_STRICT_FLAGS=ON
+          -DLTB_VLK_BUILD_EXAMPLES=ON
+          -DLTB_VLK_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure

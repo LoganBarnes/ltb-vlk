@@ -45,7 +45,8 @@ Mesa's lavapipe driver (`mesa-vulkan-drivers`) provides a software one. Set
 `LTB_VLK_REQUIRE_GPU=1` to make a missing device fail the tests instead.
 
 CI (`.github/workflows/ci.yml`) builds everything with strict flags using GCC and Clang,
-then runs all tests on lavapipe with the validation layer enabled.
+then runs all tests on lavapipe with the validation layer enabled. A macOS job does the same
+with Apple Clang on an Apple Silicon runner, with MoltenVK from Homebrew.
 
 ## Examples
 
