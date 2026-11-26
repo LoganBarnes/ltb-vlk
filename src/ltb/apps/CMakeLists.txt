@@ -30,7 +30,7 @@ ltb_make_app(particles)
 ltb_make_app(particles2)
 
 # Shares rendered output between processes (needs an ipc::Channel and vlk::SharedImage backend).
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR WIN32)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR WIN32 OR APPLE)
   ltb_make_app(share)
 endif ()
 

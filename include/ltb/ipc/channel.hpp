@@ -10,6 +10,8 @@
 
 #if defined( __linux__ )
 #include "ltb/ipc/unix_socket.hpp"
+#elif defined( __APPLE__ )
+#include "ltb/ipc/mach_port.hpp"
 #endif
 
 #if defined( _WIN32 )
@@ -33,8 +35,11 @@
 ///   Windows  A message-mode named pipe. A sent handle is duplicated into the receiving
 ///            process with DuplicateHandle (the peer's process id comes from
 ///            GetNamedPipeClientProcessId / GetNamedPipeServerProcessId), and the duplicate's
-///            value is sent in the message. Not yet built or tested on Windows.
-///   macOS    Not implemented yet. Plan: Mach messages (or XPC) carrying Mach port rights.
+///            value is sent in the message.
+///   macOS    Mach messages carrying port send rights. The listener registers its port with
+///            launchd (bootstrap_check_in) under the address, and a client finds it with
+///            bootstrap_look_up. Each side of a connection has its own receive port, and a
+///            no-senders notification on it reports that the peer has gone.
 ///
 /// To add a platform: implement this header's functions in src/ltb/ipc/<platform>/, define
 /// `NativeHandle` and `LTB_IPC_SUPPORTED` for it in native_handle.hpp, and select the
@@ -43,12 +48,13 @@ namespace ltb::ipc
 {
 
 /// \brief Where a ChannelListener listens. A filesystem path on Linux; a pipe name such as
-///        `\\.\pipe\name` on Windows.
+///        `\\.\pipe\name` on Windows; a launchd service name on macOS.
 using ChannelAddress = std::string;
 
 /// \brief A per-user address for `name` that other processes of the same user can find.
 ///        Linux: `$XDG_RUNTIME_DIR/<name>.sock` (or a per-user path in /tmp).
 ///        Windows: `\\.\pipe\<name>-<session id>`.
+///        macOS: `ltb.ipc.<name>` (launchd service names are already per user).
 auto default_channel_address( std::string_view name ) -> ChannelAddress;
 
 #if defined( LTB_IPC_SUPPORTED )
@@ -95,6 +101,11 @@ private:
 
     WinHandle pipe_         = { }; ///< The connected pipe (opened for overlapped I/O)
     WinHandle peer_process_ = { }; ///< The other process, opened to duplicate handles into
+#elif defined( __APPLE__ )
+    Channel( MachReceiveRight receive_port, MachSendRight peer_port );
+
+    MachReceiveRight receive_port_ = { }; ///< Where the peer's messages arrive
+    MachSendRight    peer_port_    = { }; ///< The peer's receive port
 #endif
 };
 
@@ -103,6 +114,8 @@ class ChannelListener
 public:
     /// \brief Starts listening at `address`. On Linux, a stale socket file left by a crashed
     ///        process is replaced, and the file is removed when the listener is destroyed.
+    ///        On macOS, launchd drops the name when the listener is destroyed or its process
+    ///        exits.
     static auto listen( ChannelAddress const& address ) -> utils::Result< ChannelListener >;
 
 #if !defined( _WIN32 )
@@ -129,6 +142,10 @@ private:
     explicit ChannelListener( UnixSocket socket );
 
     UnixSocket socket_ = { };
+#elif defined( __APPLE__ )
+    explicit ChannelListener( MachReceiveRight port );
+
+    MachReceiveRight port_ = { }; ///< Registered with launchd under the listening address
 #elif defined( _WIN32 )
     /// \brief A pipe instance waiting (with overlapped I/O) for the next client.
     struct PendingConnection;

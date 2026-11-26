@@ -6,6 +6,12 @@
 // external
 #include <gtest/gtest.h>
 
+// The Vulkan SDK's version macros use C-style casts, which Apple Clang reports even though
+// they come from a system header.
+#if defined( __clang__ ) && defined( __apple_build_version__ )
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
+
 namespace
 {
 

@@ -27,14 +27,16 @@
 ///
 ///   Linux    Opaque file descriptors (VK_KHR_external_memory_fd).
 ///   Windows  NT handles (VK_KHR_external_memory_win32, eOpaqueWin32), exported with
-///            vkGetMemoryWin32HandleKHR. Not yet built or tested on Windows.
-///   macOS    Not implemented yet. Plan: IOSurfaces (VK_EXT_metal_objects). `create()` makes
-///            an IOSurface and imports it into Vulkan, `export_handle()` returns its Mach port
-///            (IOSurfaceCreateMachPort), and `import()` looks the surface up from the port.
+///            vkGetMemoryWin32HandleKHR.
+///   macOS    IOSurfaces (VK_EXT_metal_objects, MoltenVK). `create()` has MoltenVK back the
+///            image with a new IOSurface, `export_handle()` returns the surface's Mach port
+///            (IOSurfaceCreateMachPort), and `import()` looks the surface up from the port
+///            and backs its image with it. Each side binds memory of its own, so
+///            `SharedImageInfo::memory_type_index` and `allocation_size` are informational.
 ///
 /// Linux and Windows share shared_image.cpp and only differ in the few functions in
 /// src/ltb/vlk/shared_image_backend.hpp (shared_image_fd.cpp, shared_image_win32.cpp).
-/// macOS doesn't fit that model, so it would implement this header directly instead.
+/// macOS doesn't fit that model, so shared_image_metal.cpp implements this header directly.
 /// Either way, callers don't change.
 namespace ltb::vlk
 {

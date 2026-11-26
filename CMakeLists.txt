@@ -80,6 +80,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(LtbVlk_IPC_PLATFORM linux) # Unix domain sockets that pass file descriptors
 elseif (WIN32)
   set(LtbVlk_IPC_PLATFORM windows) # Named pipes that pass duplicated handles
+elseif (APPLE)
+  set(LtbVlk_IPC_PLATFORM macos) # Mach messages that pass port rights
 endif ()
 
 if (DEFINED LtbVlk_IPC_PLATFORM)
@@ -122,6 +124,15 @@ target_link_libraries(
   cxxopts::cxxopts
   $<TARGET_NAME_IF_EXISTS:TBB::tbb>
 )
+if (APPLE)
+  # vlk::SharedImage shares IOSurfaces between processes on macOS.
+  target_link_libraries(
+    LtbVlk
+    PRIVATE
+    "-framework IOSurface"
+    "-framework CoreFoundation"
+  )
+endif ()
 target_include_directories(
   LtbVlk
   PUBLIC

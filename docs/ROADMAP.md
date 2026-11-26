@@ -10,7 +10,7 @@ Where things stand after the November 2026 code review, and what's left to do.
 
 | Branch | State |
 |:--|:--|
-| `main` | All high-, medium- and low-severity review fixes, GitHub Actions CI (GCC 14 + Clang 18 on lavapipe), and `share-app` with platform-neutral `SharedImage`/`Channel` interfaces and Linux and Windows backends. The Windows backends were built (MSVC 14.52, strict flags) and tested on Windows on 25 Nov 2026 (`windows-backend` merged at `352c491`). |
+| `main` | All high-, medium- and low-severity review fixes, GitHub Actions CI (GCC 14 + Clang 18 on lavapipe), and `share-app` with platform-neutral `SharedImage`/`Channel` interfaces and Linux, Windows and macOS backends. The Windows backends were built (MSVC 14.52, strict flags) and tested on Windows on 25 Nov 2026 (`windows-backend` merged at `352c491`). |
 
 ## 1. Windows backend (merged)
 
@@ -62,21 +62,48 @@ brace-initializing `std::string` from `vk::ArrayWrapper1D`), defining
   detect that it exited). That's fine for processes of the same user.
 - `common.cpp` in `share-app`: only `SIGINT` (Ctrl+C) is delivered on Windows, not `SIGTERM`.
 
-## 2. macOS backend (not started)
+## 2. macOS backend (done)
 
-MoltenVK can't export memory as file descriptors, and macOS has no `SCM_RIGHTS`-style fd
-passing between arbitrary processes that Vulkan memory could use. The plan:
+### What's there
 
-- **`SharedImage`:** IOSurfaces. `create()` makes an `IOSurface` and imports it into Vulkan
-  with `VK_EXT_metal_objects` (`VkImportMetalIOSurfaceInfoEXT`). `export_handle()` returns a
-  Mach port (`IOSurfaceCreateMachPort`), and `import()` looks the surface up from the port
-  (`IOSurfaceLookupFromMachPort`). This doesn't fit `shared_image_backend.hpp` (Vulkan
-  doesn't export anything), so macOS implements `shared_image.hpp` directly.
-- **`Channel`:** Mach messages (or XPC) carrying Mach port rights, with
-  `NativeHandle` as a Mach port send-right wrapper.
-- **Check first:** how far MoltenVK's `VK_EXT_external_memory_metal` support goes now. It may
-  offer a simpler route.
-- **Testing:** CI would need a macOS runner.
+| File | What it does |
+|:--|:--|
+| `include/ltb/ipc/native_handle.hpp`, `src/ltb/ipc/macos/mach_port.cpp` | `MachSendRight` owns one reference to a Mach port send right (`mach_port_deallocate` on destruction). It's `ipc::NativeHandle` on macOS. `MachReceiveRight` (`ltb/ipc/mach_port.hpp`) owns a receive right, with its queue limit raised from 5 to `MACH_PORT_QLIMIT_LARGE`. |
+| `src/ltb/ipc/macos/channel.cpp` | `Channel` over Mach messages. The listener registers a port with launchd (`bootstrap_check_in`) under the address (`ltb.ipc.<name>`), and clients find it with `bootstrap_look_up`. A client allocates both sides' ports and sends the listener its side's receive right, so neither connect nor accept ever waits. Handles go as copied send rights in port descriptors, and the payload is inline. A no-senders notification on each side's own port reports a closed peer. Stray or malformed messages are destroyed, which releases their rights. |
+| `src/ltb/vlk/shared_image_metal.cpp` | `SharedImage` backed by IOSurfaces (`VK_EXT_metal_objects`). `create()` passes `VkImportMetalIOSurfaceInfoEXT` with no surface, so MoltenVK makes one. `export_handle()` gets it back with `vkExportMetalObjectsEXT` and returns `IOSurfaceCreateMachPort`. `import()` uses `IOSurfaceLookupFromMachPort`. Each side binds memory of its own, so the info's memory type and size are informational. Implements `shared_image.hpp` directly; `shared_image.cpp` is now Linux/Windows only. |
+
+Supporting changes: `ImageSettings::p_next` (to chain the Metal structs). Device selection now
+always enables `VK_KHR_portability_subset` when the device supports it, even if the caller
+replaced the default extension list (the spec requires it; `share-app` and the GPU tests
+replace the list and were getting a validation error). `version_tests.cpp` ignores
+`-Wold-style-cast` under Apple Clang, as `ltb/vlk/vulkan.hpp` already does.
+
+### Status
+
+Built with Apple Clang 21 and `LTB_VLK_USE_STRICT_FLAGS=ON`, Vulkan SDK 1.4.328.1 (MoltenVK),
+then run on macOS 27.2 with an Apple M1 on 25 Nov 2026:
+
+- All unit tests (including `ChannelTest.*`) and GPU tests (including `SharedImageTest.*`,
+  with `LTB_VLK_REQUIRE_GPU=1`) pass.
+- `share-app --display` with several `--share` producers shows every producer's tile. Producers
+  can join and leave (Ctrl+C or `kill -9`). Ctrl+C on the display shuts it and its producers
+  down cleanly. A second display fails with a clear error, and so does a producer with no
+  display running. The debug build (validation layer on) logs no validation errors.
+
+### Still to do
+
+1. Add a macOS job to CI (`macos-latest` runners are Apple Silicon. They can run MoltenVK, but
+   whether the hosted runners expose a usable Metal device for the GPU tests hasn't been checked).
+2. Only tested on Apple Silicon. On Intel Macs with discrete GPUs, IOSurface-backed textures may
+   need managed storage and explicit synchronization.
+
+### Things to watch
+
+- launchd answers `bootstrap_check_in` for a name another process holds with "permission
+  denied", not "service active", so `listen()` looks the name up to report it properly.
+- launchd service names are per user and login session. A display started in a GUI terminal
+  and a producer started over SSH may not see each other.
+- Sending never blocks: a full queue (over 1000 unread messages) is reported as an error.
 
 ## 3. Open review items
 

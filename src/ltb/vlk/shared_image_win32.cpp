@@ -3,8 +3,6 @@
 // ///////////////////////////////////////////////////////////////////////////////////////
 // The Windows parts of SharedImage: memory shared as NT handles
 // (VK_KHR_external_memory_win32).
-//
-// NOT YET BUILT OR TESTED ON WINDOWS. Written on Linux as a starting point.
 #if defined( _WIN32 )
 
 // The Win32 parts of the Vulkan headers are only declared when this is defined before

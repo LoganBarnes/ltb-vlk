@@ -3,10 +3,10 @@
 // ///////////////////////////////////////////////////////////////////////////////////////
 // SharedImage for platforms that share memory with Vulkan external memory handles (Linux
 // and Windows). The platform-specific parts are in shared_image_<platform>.cpp, behind
-// shared_image_backend.hpp.
+// shared_image_backend.hpp. macOS is in shared_image_metal.cpp.
 #include "ltb/vlk/shared_image.hpp"
 
-#if defined( LTB_IPC_SUPPORTED )
+#if defined( __linux__ ) || defined( _WIN32 )
 
 // project
 #include "shared_image_backend.hpp"
@@ -182,4 +182,4 @@ auto SharedImage::reset( ) -> void
 
 } // namespace ltb::vlk
 
-#endif // defined( LTB_IPC_SUPPORTED )
+#endif // defined( __linux__ ) || defined( _WIN32 )

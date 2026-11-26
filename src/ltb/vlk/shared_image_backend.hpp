@@ -20,9 +20,9 @@
 ///   Linux    shared_image_fd.cpp     opaque file descriptors (VK_KHR_external_memory_fd)
 ///   Windows  shared_image_win32.cpp  NT handles (VK_KHR_external_memory_win32)
 ///
-/// (macOS shares IOSurfaces, which don't fit this model, so it would implement SharedImage
-/// directly instead.)
-#if defined( LTB_IPC_SUPPORTED )
+/// (macOS shares IOSurfaces, which don't fit this model, so shared_image_metal.cpp
+/// implements SharedImage directly instead.)
+#if defined( __linux__ ) || defined( _WIN32 )
 
 namespace ltb::vlk::detail
 {

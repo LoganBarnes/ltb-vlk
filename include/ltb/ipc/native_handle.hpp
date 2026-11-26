@@ -5,9 +5,10 @@
 
 // standard
 #include <concepts>
+#include <cstdint>
 
 /// Defined on platforms that have backends for `ipc::Channel` and `vlk::SharedImage`.
-#if defined( __linux__ ) || defined( _WIN32 )
+#if defined( __linux__ ) || defined( _WIN32 ) || defined( __APPLE__ )
 #define LTB_IPC_SUPPORTED 1
 #endif
 
@@ -25,7 +26,7 @@ concept IsNativeHandle = std::default_initializable< Handle > && std::movable< H
                              { handle.reset( ) } -> std::same_as< void >;
                          };
 
-#if !defined( _WIN32 )
+#if defined( __linux__ )
 
 /// \brief Owns a POSIX file descriptor and closes it when destroyed.
 class FileDescriptor
@@ -56,7 +57,7 @@ private:
     int fd_ = -1;
 };
 
-#else
+#elif defined( _WIN32 )
 
 /// \brief Owns a Windows `HANDLE` and closes it (CloseHandle) when destroyed.
 ///
@@ -90,6 +91,41 @@ private:
     void* handle_ = nullptr;
 };
 
+#elif defined( __APPLE__ )
+
+/// \brief Owns one user reference to a Mach port send right, and releases it
+///        (mach_port_deallocate) when destroyed.
+///
+/// Stored as `std::uint32_t` (which is what `mach_port_t` is) so this header doesn't need
+/// the Mach headers. `MACH_PORT_NULL` (0) and `MACH_PORT_DEAD` are treated as invalid.
+class MachSendRight
+{
+public:
+    MachSendRight( ) = default;
+    explicit MachSendRight( std::uint32_t port );
+    ~MachSendRight( );
+
+    MachSendRight( MachSendRight const& )                    = delete;
+    auto operator=( MachSendRight const& ) -> MachSendRight& = delete;
+
+    MachSendRight( MachSendRight&& other ) noexcept;
+    auto operator=( MachSendRight&& other ) noexcept -> MachSendRight&;
+
+    [[nodiscard( "Const getter" )]]
+    auto get( ) const -> std::uint32_t;
+
+    [[nodiscard( "Const getter" )]]
+    auto is_valid( ) const -> bool;
+
+    /// \brief Gives up ownership without releasing the right.
+    auto release( ) -> std::uint32_t;
+
+    auto reset( ) -> void;
+
+private:
+    std::uint32_t port_ = 0U;
+};
+
 #endif
 
 #if defined( __linux__ )
@@ -99,12 +135,16 @@ private:
 /// - Linux: a file descriptor, passed with SCM_RIGHTS.
 /// - Windows: an NT `HANDLE`, which the Channel duplicates into the receiving process with
 ///   `DuplicateHandle`.
-/// - macOS (not implemented yet): a Mach port send right, passed in a Mach/XPC message.
+/// - macOS: a Mach port send right (e.g. an IOSurface's port), passed in a Mach message.
 using NativeHandle = FileDescriptor;
 
 #elif defined( _WIN32 )
 
 using NativeHandle = WinHandle;
+
+#elif defined( __APPLE__ )
+
+using NativeHandle = MachSendRight;
 
 #endif
 

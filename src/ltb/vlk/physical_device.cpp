@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <queue>
 #include <ranges>
+#include <string_view>
 
 namespace ltb::vlk
 {
@@ -97,8 +98,20 @@ auto PhysicalDevice::initialize( DeviceSettings settings, Surface const* const s
 
     for ( auto const& physical_device : physical_devices )
     {
-        auto        extensions          = settings.extensions;
-        auto const& optional_extensions = settings.optional_extensions;
+        auto extensions          = settings.extensions;
+        auto optional_extensions = settings.optional_extensions;
+
+        // Portability drivers (MoltenVK) require VK_KHR_portability_subset to be enabled,
+        // so add it even when the caller replaced the default extension list.
+        constexpr auto portability_subset = std::string_view{ "VK_KHR_portability_subset" };
+        auto const     is_portability_subset = [ portability_subset ]( char const* const name ) {
+            return std::string_view{ name } == portability_subset;
+        };
+        if ( std::ranges::none_of( extensions, is_portability_subset )
+             && std::ranges::none_of( optional_extensions, is_portability_subset ) )
+        {
+            optional_extensions.push_back( portability_subset.data( ) );
+        }
 
         if ( auto queue_families
              = detail::CheckExtensionSupport{ extensions }( physical_device )

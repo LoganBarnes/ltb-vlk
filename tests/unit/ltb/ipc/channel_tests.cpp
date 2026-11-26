@@ -14,6 +14,8 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#elif defined( __APPLE__ )
+#include <mach/mach.h>
 #else
 #include <unistd.h>
 #endif
@@ -72,11 +74,14 @@ TEST( ChannelAddressTests, DefaultAddressIsPerNameAndUser )
 }
 
 /// \brief A handle to send, and a way to check a received copy refers to the same object.
-///        Linux: the write end of a pipe. Windows: a manual-reset event.
+///        Linux: the write end of a pipe. Windows: a manual-reset event. macOS: a send right
+///        to a port this process receives from.
 struct TestObject
 {
     NativeHandle handle;
-#if !defined( _WIN32 )
+#if defined( __APPLE__ )
+    MachReceiveRight receive_right;
+#elif !defined( _WIN32 )
     NativeHandle read_end;
 #endif
 
@@ -84,6 +89,15 @@ struct TestObject
     {
 #if defined( _WIN32 )
         return { .handle = NativeHandle{ ::CreateEventW( nullptr, TRUE, FALSE, nullptr ) } };
+#elif defined( __APPLE__ )
+        auto receive_right = MachReceiveRight::allocate( );
+        EXPECT_TRUE( receive_right.has_value( ) );
+        auto send_right = receive_right->make_send_right( );
+        EXPECT_TRUE( send_right.has_value( ) );
+        return {
+            .handle        = std::move( send_right.value( ) ),
+            .receive_right = std::move( receive_right.value( ) ),
+        };
 #else
         auto fds = std::array{ -1, -1 };
         EXPECT_EQ( ::pipe( fds.data( ) ), 0 );
@@ -97,6 +111,31 @@ struct TestObject
 #if defined( _WIN32 )
         return ::SetEvent( copy.get( ) )
             && ( WAIT_OBJECT_0 == ::WaitForSingleObject( handle.get( ), 0U ) );
+#elif defined( __APPLE__ )
+        struct Received
+        {
+            mach_msg_header_t      header;
+            mach_msg_max_trailer_t trailer;
+        };
+        auto sent = mach_msg_header_t{ };
+        sent.msgh_bits        = MACH_MSGH_BITS_SET( MACH_MSG_TYPE_COPY_SEND, 0U, 0U, 0U );
+        sent.msgh_size        = sizeof( sent );
+        sent.msgh_remote_port = copy.get( );
+        sent.msgh_id          = 1234;
+        auto received         = Received{ };
+        return ( MACH_MSG_SUCCESS
+                 == ::mach_msg( &sent, MACH_SEND_MSG, sizeof( sent ), 0U, MACH_PORT_NULL, 0U, MACH_PORT_NULL ) )
+            && ( MACH_MSG_SUCCESS
+                 == ::mach_msg(
+                     &received.header,
+                     MACH_RCV_MSG | MACH_RCV_TIMEOUT,
+                     0U,
+                     sizeof( received ),
+                     receive_right.get( ),
+                     0U,
+                     MACH_PORT_NULL
+                 ) )
+            && ( 1234 == received.header.msgh_id );
 #else
         auto const byte = char{ 'x' };
         auto       read = char{ };

@@ -48,9 +48,11 @@ auto Image::initialize( ImageSettings settings ) -> utils::Result< void >
         image_info.setQueueFamilyIndices( settings.queue_family_indices );
     }
 
-    auto const external_memory_info = vk::ExternalMemoryImageCreateInfo{ }.setHandleTypes(
-        settings.external_memory_handle_types
-    );
+    image_info.setPNext( settings.p_next );
+
+    auto const external_memory_info = vk::ExternalMemoryImageCreateInfo{ }
+                                          .setPNext( settings.p_next )
+                                          .setHandleTypes( settings.external_memory_handle_types );
     if ( settings.external_memory_handle_types )
     {
         image_info.setPNext( &external_memory_info );
