@@ -154,4 +154,16 @@ jobs:
         run: cmake --build build
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: |
+          if ! ctest --test-dir build --output-on-failure; then
+            # Show each failure in the run's summary, so it can be seen without the log.
+            while read -r test; do
+              name="${test#*:}"
+              output="$(ctest --test-dir build -R "^${name}\$" --output-on-failure 2>&1 \
+                | grep -v -E 'debug\]|^ *$' | tail -n 25)"
+              output="${output//'%'/'%25'}"
+              output="${output//$'\n'/'%0A'}"
+              echo "::error title=${name}::${output}"
+            done < build/Testing/Temporary/LastTestsFailed.log
+            exit 1
+          fi
