@@ -57,7 +57,7 @@ auto main( int const argc, char const* const* const argv ) -> int
     options.add_options( )
         ( "display", "Open a window that shows the output of every producer" )
         ( "share", "Render offscreen and share the output with a running display" )
-        ( "socket", "Address the display listens on (a socket path on Linux)",
+        ( "socket", "Address the display listens on (a socket path on Linux, a pipe name on Windows, a launchd service name on macOS)",
           cxxopts::value< std::string >( )->default_value(
               ltb::ipc::default_channel_address( ltb::share::default_channel_name ) ) )
         ( "size", "Width and height of a producer's output, in pixels",

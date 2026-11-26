@@ -36,6 +36,10 @@ struct ImageSettings
     /// \brief Set to export or import the image's memory (e.g. `eOpaqueFd` to share it with
     ///        another process). Images that share memory must use identical settings.
     vk::ExternalMemoryHandleTypeFlags external_memory_handle_types = { };
+
+    /// \brief Extra structs to chain onto `vk::ImageCreateInfo`, for platform-specific
+    ///        options without a setting here (e.g. `vk::ImportMetalIOSurfaceInfoEXT`).
+    void const* p_next = nullptr;
 };
 
 class Image
